@@ -1,36 +1,63 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Camp Registration Site
 
-## Getting Started
+Registration site for a church camp meeting/retreat: a landing page (About/FAQ), a
+single-page registration + payment form, and a password-protected `/dashboard`
+for admins to review payments and see stats.
 
-First, run the development server:
+Placeholder event details (dates, location, theme, churches invited, fees, payment
+account numbers) live in `src/lib/event.ts` — edit that file once the real details
+are confirmed.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Setup
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+1. **Install dependencies**
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+   ```bash
+   npm install
+   ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2. **Create a Supabase project** at [supabase.com](https://supabase.com), then run
+   `supabase/migrations/0001_init.sql` in the project's SQL Editor. This creates the
+   `registrations` / `attendees` tables, the `submit_registration()` function used
+   for the atomic single-submit, and the private `payment-proofs` storage bucket
+   (2MB limit, image/PDF only — enforced by Supabase itself, not just the browser).
 
-## Learn More
+3. **Copy `.env.example` to `.env.local`** and fill in:
+   - `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY`
+     from Project Settings → API in Supabase.
+   - `ADMIN_USERNAME` / `ADMIN_PASSWORD` — the dashboard login. Defaults to
+     `test` / `12345678` if unset; **change these before the site goes live.**
+   - `SESSION_SECRET` — any long random string, used to sign the admin session
+     cookie.
 
-To learn more about Next.js, take a look at the following resources:
+4. **Run it**
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+   ```bash
+   npm run dev
+   ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+   Landing page at `/`, registration at `/register`, admin dashboard at
+   `/dashboard` (redirects to `/dashboard/login` if not signed in).
 
-## Deploy on Vercel
+## How registration submission works
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The registration page collects everything (contact info, each attendee, payment
+method, reference number, and a proof-of-payment file) and submits it as a single
+action:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. The proof file is uploaded to Supabase Storage first (required to get a path
+   for the database row).
+2. One Postgres RPC call (`submit_registration`) then inserts the registration
+   and every attendee in a single transaction — so a partial failure rolls back
+   completely instead of leaving orphaned rows.
+3. A client-generated idempotency key is sent with both calls, tied to a unique
+   constraint in the database. Retrying after a timeout re-uses the same file
+   path and returns the original registration instead of creating a duplicate.
+
+## Known limitations
+
+- Upload guardrails check file size (2MB), MIME type, and magic-byte signature
+  client-side, and the Supabase Storage bucket itself enforces size/type limits
+  server-side regardless of the client. There's no virus-scanning pipeline —
+  add one (e.g. a storage webhook to an AV API) if that's needed.
+- The admin login is a single shared username/password, not per-admin accounts.
