@@ -15,7 +15,7 @@ type Attendee = {
 const emptyAttendee: Attendee = { firstName: "", lastName: "", ageRange: "", gender: "" };
 
 const inputClass =
-  "mt-1 block w-full rounded-md border border-navy-900/20 bg-white px-3 py-2.5 text-sm text-navy-900 placeholder:text-navy-900/40 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600";
+  "mt-1 block w-full rounded-md border border-navy-900/20 bg-white px-3 py-2.5 text-sm text-navy-900 placeholder:text-navy-900/40 focus:border-gold-600 focus:outline-none focus:ring-1 focus:ring-gold-600";
 const labelClass = "text-sm font-semibold text-navy-900";
 
 export default function RegistrationForm() {
@@ -121,7 +121,7 @@ export default function RegistrationForm() {
 
   if (result) {
     return (
-      <div className="rounded-xl border border-teal-600/30 bg-white p-8 text-center shadow-sm">
+      <div className="rounded-xl border border-gold-600/30 bg-white p-8 text-center shadow-sm">
         <h2 className="text-2xl font-bold text-navy-900">You&apos;re registered!</h2>
         <p className="mt-3 text-navy-900/70">
           We received your registration for {result.groupSize}{" "}
@@ -153,7 +153,7 @@ export default function RegistrationForm() {
           </Field>
         </div>
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Church">
+          <Field label="Church/District">
             <input className={inputClass} value={churchName} onChange={(e) => setChurchName(e.target.value)} required />
           </Field>
           <Field label="City">
@@ -237,7 +237,7 @@ export default function RegistrationForm() {
         <button
           type="button"
           onClick={addAttendee}
-          className="mt-4 w-full rounded-md border border-teal-600 py-2.5 text-sm font-semibold text-teal-700 hover:bg-teal-600/5"
+          className="mt-4 w-full rounded-md border border-gold-600 py-2.5 text-sm font-semibold text-gold-700 hover:bg-gold-600/5"
         >
           + Add Another Person (Family / Group)
         </button>
@@ -309,7 +309,7 @@ export default function RegistrationForm() {
           />
           <p className="mt-1 text-xs text-navy-900/50">JPG, PNG, WEBP, or PDF. Max size 2MB.</p>
           {proofFile && !fileError && (
-            <p className="mt-1 text-xs text-teal-700">
+            <p className="mt-1 text-xs text-gold-700">
               Selected: {proofFile.name} ({(proofFile.size / 1024 / 1024).toFixed(2)}MB)
             </p>
           )}
@@ -356,7 +356,7 @@ function PaymentMethodButton({ active, onClick, label }: { active: boolean; onCl
       type="button"
       onClick={onClick}
       className={`flex-1 rounded-full border py-2.5 text-sm font-semibold transition ${
-        active ? "border-teal-600 bg-teal-600 text-white" : "border-navy-900/20 text-navy-900/70"
+        active ? "border-gold-600 bg-gold-600 text-white" : "border-navy-900/20 text-navy-900/70"
       }`}
     >
       {label}

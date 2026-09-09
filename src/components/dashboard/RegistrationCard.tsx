@@ -42,7 +42,7 @@ export default function RegistrationCard({
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {registration.group_size > 1 && (
-            <span className="rounded-full bg-teal-600/10 px-2.5 py-1 text-xs font-semibold text-teal-700">
+            <span className="rounded-full bg-gold-600/10 px-2.5 py-1 text-xs font-semibold text-gold-700">
               Group of {registration.group_size}
             </span>
           )}
@@ -73,7 +73,7 @@ export default function RegistrationCard({
                   href={registration.payment_proof_url}
                   target="_blank"
                   rel="noreferrer"
-                  className="mt-1 inline-block text-teal-700 underline"
+                  className="mt-1 inline-block text-gold-700 underline"
                 >
                   View proof of payment
                 </a>

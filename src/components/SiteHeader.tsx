@@ -27,7 +27,7 @@ export default function SiteHeader() {
           ))}
           <Link
             href="/register"
-            className="rounded-full bg-teal-600 px-5 py-2 text-sm font-semibold hover:bg-teal-500"
+            className="rounded-full bg-gold-600 px-5 py-2 text-sm font-semibold hover:bg-gold-500"
           >
             Register Now
           </Link>
@@ -68,7 +68,7 @@ export default function SiteHeader() {
           <Link
             href="/register"
             onClick={() => setOpen(false)}
-            className="mt-2 rounded-full bg-teal-600 px-5 py-3 text-center text-sm font-semibold"
+            className="mt-2 rounded-full bg-gold-600 px-5 py-3 text-center text-sm font-semibold"
           >
             Register Now
           </Link>

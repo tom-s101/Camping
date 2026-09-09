@@ -38,7 +38,7 @@ export default function DashboardLoginPage() {
         <label className="mt-6 block text-sm font-semibold text-navy-900">
           Username
           <input
-            className="mt-1 block w-full rounded-md border border-navy-900/20 px-3 py-2.5 text-sm focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
+            className="mt-1 block w-full rounded-md border border-navy-900/20 px-3 py-2.5 text-sm focus:border-gold-600 focus:outline-none focus:ring-1 focus:ring-gold-600"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             autoComplete="username"
@@ -50,7 +50,7 @@ export default function DashboardLoginPage() {
           Password
           <input
             type="password"
-            className="mt-1 block w-full rounded-md border border-navy-900/20 px-3 py-2.5 text-sm focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
+            className="mt-1 block w-full rounded-md border border-navy-900/20 px-3 py-2.5 text-sm focus:border-gold-600 focus:outline-none focus:ring-1 focus:ring-gold-600"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"

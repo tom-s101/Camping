@@ -1,14 +1,17 @@
 // Placeholder event details. Update these when the real details are confirmed.
 export const EVENT = {
-  name: "Section 7 Camp Meeting",
-  theme: "Absolute Reliance",
-  dateStart: "2026-11-20",
-  dateEnd: "2026-11-22",
-  dateLabel: "November 20–22, 2026",
-  who: "Churches from Section 7",
-  locationName: "Forrest Falls Camp",
-  locationDetail: "San Fernando Valley",
-  feePhp: 200,
+  name: "Sanctuary Camp 2026",
+  theme: "Sanctuary: The God Who Dwells Within Us",
+  verse: "“And let them make Me a sanctuary; that I may dwell among them.”",
+  verseRef: "Exodus 25:8",
+  dateStart: "2026-10-16",
+  dateEnd: "2026-10-18",
+  dateLabel: "October 16–18, 2026",
+  who: "Area 2 Youth Federation",
+  openTo: "To all who is willing",
+  locationName: "Adventist University of the Philippines",
+  locationDetail: "Puting Kahoy, Silang, Cavite",
+  feePhp: 700,
 } as const;
 
 export const AGE_RANGES = ["0-5", "6-12", "13-17", "18-25", "26-40", "41-60", "61+"] as const;
@@ -20,7 +23,7 @@ export const PAYMENT = {
   },
   bank: {
     bankName: "BDO Unibank",
-    accountName: "Section 7 Camp Meeting Fund",
+    accountName: "Sanctuary Camp 2026 Fund",
     accountNumber: "0012 3456 7890",
   },
 } as const;

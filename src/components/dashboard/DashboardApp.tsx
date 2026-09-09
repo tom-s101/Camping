@@ -114,7 +114,7 @@ export default function DashboardApp() {
                 placeholder="Search by name, email, or phone…"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className="mb-4 w-full rounded-md border border-navy-900/20 px-3 py-2.5 text-sm focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
+                className="mb-4 w-full rounded-md border border-navy-900/20 px-3 py-2.5 text-sm focus:border-gold-600 focus:outline-none focus:ring-1 focus:ring-gold-600"
               />
               {loading ? (
                 <p className="text-sm text-navy-900/50">Loading…</p>
@@ -153,7 +153,7 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
       type="button"
       onClick={onClick}
       className={`border-b-2 px-3 py-2 text-sm font-semibold ${
-        active ? "border-teal-600 text-navy-900" : "border-transparent text-navy-900/50"
+        active ? "border-gold-600 text-navy-900" : "border-transparent text-navy-900/50"
       }`}
     >
       {children}

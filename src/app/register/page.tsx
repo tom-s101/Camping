@@ -9,7 +9,7 @@ export default function RegisterPage() {
       <SiteHeader />
 
       <section className="bg-navy-900 py-14 text-center text-white">
-        <p className="text-sm font-semibold uppercase tracking-widest text-teal-500">{EVENT.theme}</p>
+        <p className="text-sm font-semibold uppercase tracking-widest text-gold-500">{EVENT.theme}</p>
         <h1 className="mt-2 text-3xl font-extrabold sm:text-4xl">{EVENT.name}</h1>
         <p className="mt-2 text-white/70">{EVENT.dateLabel}</p>
       </section>
@@ -29,7 +29,7 @@ export default function RegisterPage() {
                 <span className="font-semibold text-navy-900">Dates:</span> {EVENT.dateLabel}
               </p>
               <p className="mt-1">
-                <span className="font-semibold text-navy-900">Open to:</span> {EVENT.who}
+                <span className="font-semibold text-navy-900">Open to:</span> {EVENT.openTo}
               </p>
             </div>
           </div>

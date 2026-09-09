@@ -64,7 +64,7 @@ create or replace function public.submit_registration(
   p_payment_reference text,
   p_payment_proof_path text,
   p_attendees jsonb,
-  p_fee_php numeric default 200
+  p_fee_php numeric default 700
 )
 returns uuid
 language plpgsql

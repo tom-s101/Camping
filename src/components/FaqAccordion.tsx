@@ -1,19 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import { EVENT } from "@/lib/event";
 
 const FAQS = [
   {
     q: "Where will the camp be held?",
-    a: "Placeholder: the camp will be held at Forrest Falls Camp, in the San Fernando Valley. Full directions and a map will be shared closer to the event.",
+    a: `Placeholder: the camp will be held at ${EVENT.locationName}, ${EVENT.locationDetail}. Full directions and a map will be shared closer to the event.`,
   },
   {
     q: "Who can attend?",
-    a: "Placeholder: this camp is open to members and families from Section 7 churches. Everyone from young children to seniors is welcome; a chaperone is required for unaccompanied minors.",
+    a: `Placeholder: this camp, organized by the ${EVENT.who}, is open to all who are willing to attend — from young children to seniors. A chaperone is required for unaccompanied minors.`,
   },
   {
     q: "What are the fees?",
-    a: "Placeholder: registration is 200 Pesos per person, which covers lodging and meals for the weekend. Family and group registration is available.",
+    a: `Placeholder: registration is ₱${EVENT.feePhp} per person, which covers lodging and meals for the weekend. Family and group registration is available.`,
   },
   {
     q: "What should I bring?",
@@ -45,7 +46,7 @@ export default function FaqAccordion() {
               onClick={() => setOpenIndex(isOpen ? null : index)}
             >
               <span className="font-semibold text-navy-900">{item.q}</span>
-              <span className="shrink-0 text-xl leading-none text-teal-600">{isOpen ? "−" : "+"}</span>
+              <span className="shrink-0 text-xl leading-none text-gold-600">{isOpen ? "−" : "+"}</span>
             </button>
             {isOpen && <p className="px-5 pb-4 text-sm leading-relaxed text-navy-900/70">{item.a}</p>}
           </div>

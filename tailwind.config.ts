@@ -6,16 +6,16 @@ const config: Config = {
     extend: {
       colors: {
         navy: {
-          950: "#141b2b",
-          900: "#1b2438",
-          800: "#242f47",
+          950: "#10142a",
+          900: "#1a2040",
+          800: "#252c52",
         },
-        teal: {
-          700: "#3d6b62",
-          600: "#4a7f73",
-          500: "#5c9284",
+        gold: {
+          700: "#8a6a1f",
+          600: "#b0872c",
+          500: "#c9a03f",
         },
-        cream: "#f6f4ef",
+        cream: "#f8f4ea",
       },
       fontFamily: {
         sans: ["var(--font-sans)", "Arial", "sans-serif"],
