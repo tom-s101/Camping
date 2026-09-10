@@ -7,14 +7,14 @@ const HEADERS = [
   "Contact Last Name",
   "Email",
   "Phone",
-  "Church/District",
+  "District",
+  "Church",
   "City",
   "Group Size",
   "Attendee First Name",
   "Attendee Last Name",
   "Age Range",
   "Gender",
-  "Payment Method",
   "Payment Reference",
   "Payment Status",
   "Total Amount (PHP)",
@@ -25,6 +25,25 @@ function escapeCsvField(value: string | number) {
   return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
+// Natural sort so "District 2" sorts before "District 10" (plain string
+// sort would put "District 10" first).
+function naturalCompare(a: string, b: string) {
+  const chunk = (s: string) => s.match(/\d+|\D+/g) ?? [];
+  const chunksA = chunk(a);
+  const chunksB = chunk(b);
+  const len = Math.max(chunksA.length, chunksB.length);
+  for (let i = 0; i < len; i++) {
+    const partA = chunksA[i] ?? "";
+    const partB = chunksB[i] ?? "";
+    const numA = Number(partA);
+    const numB = Number(partB);
+    const bothNumeric = partA !== "" && partB !== "" && !Number.isNaN(numA) && !Number.isNaN(numB);
+    const cmp = bothNumeric ? numA - numB : partA.localeCompare(partB);
+    if (cmp !== 0) return cmp;
+  }
+  return 0;
+}
+
 function toRow(registration: Registration, attendee: Registration["attendees"][number]) {
   return [
     registration.id,
@@ -33,6 +52,7 @@ function toRow(registration: Registration, attendee: Registration["attendees"][n
     registration.contact_last_name,
     registration.contact_email,
     registration.contact_phone,
+    registration.district,
     registration.church_name,
     registration.city,
     registration.group_size,
@@ -40,48 +60,66 @@ function toRow(registration: Registration, attendee: Registration["attendees"][n
     attendee.last_name,
     attendee.age_range,
     attendee.gender,
-    registration.payment_method === "gcash" ? "GCash" : "Bank Transfer",
     registration.payment_reference,
     registration.payment_status,
     registration.total_amount_php,
   ];
 }
 
-function groupByChurch(registrations: Registration[]) {
-  const groups = new Map<string, { churchName: string; registrations: Registration[] }>();
-  for (const registration of registrations) {
-    const key = registration.church_name.trim().toLowerCase();
-    if (!groups.has(key)) groups.set(key, { churchName: registration.church_name.trim(), registrations: [] });
-    groups.get(key)!.registrations.push(registration);
+function groupBy<T>(items: T[], keyOf: (item: T) => string) {
+  const groups = new Map<string, { label: string; items: T[] }>();
+  for (const item of items) {
+    const label = keyOf(item).trim() || "(none)";
+    const key = label.toLowerCase();
+    if (!groups.has(key)) groups.set(key, { label, items: [] });
+    groups.get(key)!.items.push(item);
   }
-  return [...groups.values()].sort((a, b) => a.churchName.localeCompare(b.churchName));
+  return [...groups.values()];
 }
 
 export function exportRegistrationsToCsv(registrations: Registration[]) {
-  const churchGroups = groupByChurch(registrations);
   const blankRow = HEADERS.map(() => "");
   const rows: (string | number)[][] = [HEADERS];
 
-  churchGroups.forEach((group, index) => {
-    if (index > 0) rows.push(blankRow);
+  const districtGroups = groupBy(registrations, (r) => r.district).sort((a, b) =>
+    naturalCompare(a.label, b.label)
+  );
 
-    const attendeeCount = group.registrations.reduce((sum, r) => sum + r.attendees.length, 0);
-    const churchHeader = [
-      `Church: ${group.churchName}`,
-      `${group.registrations.length} registration(s), ${attendeeCount} attendee(s)`,
-    ];
-    rows.push([...churchHeader, ...blankRow.slice(churchHeader.length)]);
+  districtGroups.forEach((districtGroup, districtIndex) => {
+    if (districtIndex > 0) rows.push(blankRow);
 
-    for (const registration of group.registrations) {
-      const attendees = registration.attendees.length > 0 ? registration.attendees : [null];
-      for (const attendee of attendees) {
-        rows.push(
-          attendee
-            ? toRow(registration, attendee)
-            : toRow(registration, { id: "", first_name: "", last_name: "", age_range: "", gender: "" })
-        );
+    const districtAttendeeCount = districtGroup.items.reduce((sum, r) => sum + r.attendees.length, 0);
+    rows.push([
+      `District: ${districtGroup.label}`,
+      `${districtGroup.items.length} registration(s), ${districtAttendeeCount} attendee(s)`,
+      ...blankRow.slice(2),
+    ]);
+
+    const churchGroups = groupBy(districtGroup.items, (r) => r.church_name).sort((a, b) =>
+      a.label.localeCompare(b.label)
+    );
+
+    churchGroups.forEach((churchGroup, churchIndex) => {
+      if (churchIndex > 0) rows.push(blankRow);
+
+      const churchAttendeeCount = churchGroup.items.reduce((sum, r) => sum + r.attendees.length, 0);
+      rows.push([
+        `  Church: ${churchGroup.label}`,
+        `${churchGroup.items.length} registration(s), ${churchAttendeeCount} attendee(s)`,
+        ...blankRow.slice(2),
+      ]);
+
+      for (const registration of churchGroup.items) {
+        const attendees = registration.attendees.length > 0 ? registration.attendees : [null];
+        for (const attendee of attendees) {
+          rows.push(
+            attendee
+              ? toRow(registration, attendee)
+              : toRow(registration, { id: "", first_name: "", last_name: "", age_range: "", gender: "" })
+          );
+        }
       }
-    }
+    });
   });
 
   const csv = rows.map((row) => row.map(escapeCsvField).join(",")).join("\r\n");

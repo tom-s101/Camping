@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     if (q) {
       const like = `%${q.replace(/[%_]/g, "")}%`;
       query = query.or(
-        `contact_first_name.ilike.${like},contact_last_name.ilike.${like},contact_email.ilike.${like},contact_phone.ilike.${like},church_name.ilike.${like}`
+        `contact_first_name.ilike.${like},contact_last_name.ilike.${like},contact_email.ilike.${like},contact_phone.ilike.${like},church_name.ilike.${like},district.ilike.${like}`
       );
     }
 

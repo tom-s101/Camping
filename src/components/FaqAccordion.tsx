@@ -22,7 +22,7 @@ const FAQS = [
   },
   {
     q: "How do I pay, and what if my payment isn't confirmed right away?",
-    a: "Placeholder: pay via GCash or bank transfer at checkout and upload your proof of payment. Our team manually reviews every payment, so it may take a few days to be marked as confirmed.",
+    a: "Placeholder: pay your AY leader in person, then upload a picture of your proof of payment along with the transaction number during registration. Our team manually reviews every payment, so it may take a few days to be marked as confirmed.",
   },
   {
     q: "Is there a refund policy?",

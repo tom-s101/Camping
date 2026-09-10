@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AGE_RANGES, EVENT, PAYMENT, UPLOAD } from "@/lib/event";
+import { AGE_RANGES, EVENT, UPLOAD } from "@/lib/event";
 import { supabase } from "@/lib/supabase/client";
 import { extensionForMimeType, validateUploadFile } from "@/lib/validateUpload";
 
@@ -25,12 +25,12 @@ export default function RegistrationForm() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [district, setDistrict] = useState("");
   const [churchName, setChurchName] = useState("");
   const [city, setCity] = useState("");
 
   const [attendees, setAttendees] = useState<Attendee[]>([{ ...emptyAttendee }]);
 
-  const [paymentMethod, setPaymentMethod] = useState<"gcash" | "bank_transfer">("gcash");
   const [paymentReference, setPaymentReference] = useState("");
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -51,10 +51,10 @@ export default function RegistrationForm() {
 
   const canSubmit = useMemo(() => {
     if (submitting) return false;
-    if (!firstName || !lastName || !email || !phone || !churchName || !city) return false;
+    if (!firstName || !lastName || !email || !phone || !district || !churchName || !city) return false;
     if (!paymentReference || !proofFile) return false;
     return attendees.every((a) => a.firstName && a.lastName && a.ageRange && a.gender);
-  }, [submitting, firstName, lastName, email, phone, churchName, city, paymentReference, proofFile, attendees]);
+  }, [submitting, firstName, lastName, email, phone, district, churchName, city, paymentReference, proofFile, attendees]);
 
   async function handleFileChange(file: File | null) {
     setProofFile(null);
@@ -96,9 +96,9 @@ export default function RegistrationForm() {
         p_contact_last_name: lastName,
         p_contact_email: email,
         p_contact_phone: phone,
+        p_district: district,
         p_church_name: churchName,
         p_city: city,
-        p_payment_method: paymentMethod,
         p_payment_reference: paymentReference,
         p_payment_proof_path: path,
         p_attendees: attendees.map((a) => ({
@@ -153,9 +153,14 @@ export default function RegistrationForm() {
           </Field>
         </div>
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Church/District">
+          <Field label="District">
+            <input className={inputClass} value={district} onChange={(e) => setDistrict(e.target.value)} required />
+          </Field>
+          <Field label="Church">
             <input className={inputClass} value={churchName} onChange={(e) => setChurchName(e.target.value)} required />
           </Field>
+        </div>
+        <div className="mt-4">
           <Field label="City">
             <input className={inputClass} value={city} onChange={(e) => setCity(e.target.value)} required />
           </Field>
@@ -249,42 +254,12 @@ export default function RegistrationForm() {
         </p>
         <p className="mt-1 text-3xl font-extrabold text-navy-900">₱{total.toLocaleString()}</p>
 
-        <div className="mt-5 flex gap-3">
-          <PaymentMethodButton
-            active={paymentMethod === "gcash"}
-            onClick={() => setPaymentMethod("gcash")}
-            label="GCash"
-          />
-          <PaymentMethodButton
-            active={paymentMethod === "bank_transfer"}
-            onClick={() => setPaymentMethod("bank_transfer")}
-            label="Bank Transfer"
-          />
-        </div>
-
-        <div className="mt-5 rounded-lg bg-cream p-4">
-          {paymentMethod === "gcash" ? (
-            <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
-              <QrPlaceholder />
-              <div className="text-sm text-navy-900/80">
-                <p className="font-semibold text-navy-900">Send payment via GCash to:</p>
-                <p className="mt-1">{PAYMENT.gcash.name}</p>
-                <p>{PAYMENT.gcash.number}</p>
-                <p className="mt-2 text-xs text-navy-900/50">(Placeholder account details)</p>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
-              <QrPlaceholder />
-              <div className="text-sm text-navy-900/80">
-                <p className="font-semibold text-navy-900">Send payment via bank transfer to:</p>
-                <p className="mt-1">{PAYMENT.bank.bankName}</p>
-                <p>{PAYMENT.bank.accountName}</p>
-                <p>{PAYMENT.bank.accountNumber}</p>
-                <p className="mt-2 text-xs text-navy-900/50">(Placeholder account details)</p>
-              </div>
-            </div>
-          )}
+        <div className="mt-5 rounded-lg bg-cream p-4 text-sm text-navy-900/80">
+          <p className="font-semibold text-navy-900">Upload your proof of payment to your AY leader.</p>
+          <p className="mt-1">
+            Pay your AY leader in person, then upload a picture of your proof of payment below along with the
+            transaction number.
+          </p>
         </div>
 
         <div className="mt-5">
@@ -299,7 +274,7 @@ export default function RegistrationForm() {
         </div>
 
         <div className="mt-4">
-          <label className={labelClass}>Proof of Payment (screenshot or receipt)</label>
+          <label className={labelClass}>Proof of Payment (picture given to your AY leader)</label>
           <input
             type="file"
             accept={UPLOAD.acceptedMimeTypes.join(",")}
@@ -350,24 +325,3 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function PaymentMethodButton({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex-1 rounded-full border py-2.5 text-sm font-semibold transition ${
-        active ? "border-gold-600 bg-gold-600 text-white" : "border-navy-900/20 text-navy-900/70"
-      }`}
-    >
-      {label}
-    </button>
-  );
-}
-
-function QrPlaceholder() {
-  return (
-    <div className="flex h-28 w-28 shrink-0 items-center justify-center rounded-md border-2 border-dashed border-navy-900/30 text-center text-[10px] text-navy-900/40">
-      QR Code Placeholder
-    </div>
-  );
-}

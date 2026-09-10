@@ -37,7 +37,7 @@ export default function RegistrationCard({
             {registration.contact_first_name} {registration.contact_last_name}
           </p>
           <p className="truncate text-xs text-navy-900/50">
-            {registration.church_name} &middot; {registration.city}
+            {registration.district} &middot; {registration.church_name} &middot; {registration.city}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -63,10 +63,7 @@ export default function RegistrationCard({
             </div>
             <div>
               <p className="text-xs font-semibold uppercase text-navy-900/40">Payment</p>
-              <p className="mt-1 text-navy-900">
-                ₱{Number(registration.total_amount_php).toLocaleString()} via{" "}
-                {registration.payment_method === "gcash" ? "GCash" : "Bank Transfer"}
-              </p>
+              <p className="mt-1 text-navy-900">₱{Number(registration.total_amount_php).toLocaleString()}</p>
               <p className="text-navy-900">Ref: {registration.payment_reference}</p>
               {registration.payment_proof_url && (
                 <a

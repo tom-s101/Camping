@@ -4,9 +4,8 @@ Registration site for a church camp meeting/retreat: a landing page (About/FAQ),
 single-page registration + payment form, and a password-protected `/dashboard`
 for admins to review payments and see stats.
 
-Placeholder event details (dates, location, theme, churches invited, fees, payment
-account numbers) live in `src/lib/event.ts` — edit that file once the real details
-are confirmed.
+Placeholder event details (dates, location, theme, audience, fee) live in
+`src/lib/event.ts` — edit that file once the real details are confirmed.
 
 ## Setup
 
@@ -17,10 +16,15 @@ are confirmed.
    ```
 
 2. **Create a Supabase project** at [supabase.com](https://supabase.com), then run
-   `supabase/migrations/0001_init.sql` in the project's SQL Editor. This creates the
-   `registrations` / `attendees` tables, the `submit_registration()` function used
-   for the atomic single-submit, and the private `payment-proofs` storage bucket
-   (2MB limit, image/PDF only — enforced by Supabase itself, not just the browser).
+   the files in `supabase/migrations/` **in order** in the project's SQL Editor:
+   - `0001_init.sql` creates the `registrations` / `attendees` tables, the
+     `submit_registration()` function used for the atomic single-submit, and the
+     private `payment-proofs` storage bucket (2MB limit, image/PDF only —
+     enforced by Supabase itself, not just the browser).
+   - `0002_district_and_payment_update.sql` splits church/district into two
+     columns and drops the payment-method column (payment is now handled
+     in-person through each attendee's AY leader, so there's no method to
+     choose on the site).
 
 3. **Copy `.env.example` to `.env.local`** and fill in:
    - `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY`
@@ -41,9 +45,9 @@ are confirmed.
 
 ## How registration submission works
 
-The registration page collects everything (contact info, each attendee, payment
-method, reference number, and a proof-of-payment file) and submits it as a single
-action:
+The registration page collects everything (contact info, each attendee, a
+transaction reference number, and a proof-of-payment file for the payment made
+to the attendee's AY leader) and submits it as a single action:
 
 1. The proof file is uploaded to Supabase Storage first (required to get a path
    for the database row).

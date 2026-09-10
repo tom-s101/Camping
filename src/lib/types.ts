@@ -12,11 +12,11 @@ export type Registration = {
   contact_last_name: string;
   contact_email: string;
   contact_phone: string;
+  district: string;
   church_name: string;
   city: string;
   group_size: number;
   total_amount_php: number;
-  payment_method: "gcash" | "bank_transfer";
   payment_reference: string;
   payment_proof_path: string;
   payment_proof_url: string | null;

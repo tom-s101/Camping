@@ -16,18 +16,6 @@ export const EVENT = {
 
 export const AGE_RANGES = ["0-5", "6-12", "13-17", "18-25", "26-40", "41-60", "61+"] as const;
 
-export const PAYMENT = {
-  gcash: {
-    name: "Juan Dela Cruz",
-    number: "0917 000 0000",
-  },
-  bank: {
-    bankName: "BDO Unibank",
-    accountName: "Sanctuary Camp 2026 Fund",
-    accountNumber: "0012 3456 7890",
-  },
-} as const;
-
 export const UPLOAD = {
   maxBytes: 2 * 1024 * 1024,
   acceptedMimeTypes: ["image/jpeg", "image/png", "image/webp", "application/pdf"],
