@@ -26,7 +26,7 @@ are confirmed.
    - `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY`
      from Project Settings → API in Supabase.
    - `ADMIN_USERNAME` / `ADMIN_PASSWORD` — the dashboard login. Defaults to
-     `test` / `12345678` if unset; **change these before the site goes live.**
+     `Admin` / `area2camp` if unset; **change these before the site goes live.**
    - `SESSION_SECRET` — any long random string, used to sign the admin session
      cookie.
 

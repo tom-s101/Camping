@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { createSessionCookieValue, timingSafeEqual, SESSION_COOKIE_NAME, SESSION_MAX_AGE_SECONDS } from "@/lib/session";
 
 // Placeholder credentials until real ones are set as env vars.
-const ADMIN_USERNAME = process.env.ADMIN_USERNAME ?? "test";
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "12345678";
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME ?? "Admin";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "area2camp";
 
 export const dynamic = "force-dynamic";
 
