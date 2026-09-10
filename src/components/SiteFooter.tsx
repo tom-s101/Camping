@@ -12,7 +12,16 @@ export default function SiteFooter() {
           <a href="/register" className="hover:text-white">Register</a>
         </nav>
         <p className="mt-6 text-xs text-white/40">
-          Questions? Contact your church coordinator or email registration@example.org (placeholder).
+          Questions? Message{" "}
+          <a
+            href="https://facebook.com/ms.sheilazulueta"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-gold-500 underline hover:text-gold-500/80"
+          >
+            Sheila Zulueta on Messenger
+          </a>
+          .
         </p>
         <p className="mt-2 text-xs text-white/40">&copy; {new Date().getFullYear()} {EVENT.name}. All rights reserved.</p>
       </div>

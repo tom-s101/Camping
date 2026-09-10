@@ -6,27 +6,27 @@ import { EVENT } from "@/lib/event";
 const FAQS = [
   {
     q: "Where will the camp be held?",
-    a: `Placeholder: the camp will be held at ${EVENT.locationName}, ${EVENT.locationDetail}. Full directions and a map will be shared closer to the event.`,
+    a: EVENT.locationName,
   },
   {
     q: "Who can attend?",
-    a: `Placeholder: this camp, organized by the ${EVENT.who}, is open to all who are willing to attend — from young children to seniors. A chaperone is required for unaccompanied minors.`,
+    a: "This spiritual camp is for the Area 2 youth, but anyone who is willing to join can attend.",
   },
   {
     q: "What are the fees?",
-    a: `Placeholder: registration is ₱${EVENT.feePhp} per person, which covers lodging and meals for the weekend. Family and group registration is available.`,
+    a: `Registration is ${EVENT.feePhp} pesos per person.`,
   },
   {
     q: "What should I bring?",
-    a: "Placeholder: bring bedding or a sleeping bag, warm clothing, personal toiletries, a Bible, and any personal medication. A full packing list will be sent after registration.",
+    a: "Your Bible, clothes, and a willing spirit.",
   },
   {
-    q: "How do I pay, and what if my payment isn't confirmed right away?",
-    a: "Placeholder: pay your AY leader in person, then upload a picture of your proof of payment along with the transaction number during registration. Our team manually reviews every payment, so it may take a few days to be marked as confirmed.",
+    q: "How do I pay?",
+    a: "Pay your AY leader, and upload a screenshot of your proof of payment along with the transaction number.",
   },
   {
     q: "Is there a refund policy?",
-    a: "Placeholder: refund details will be announced closer to the event. Please contact your church coordinator with questions in the meantime.",
+    a: "There is a no-refund policy. Once you pay, you will be unable to get a refund for your registration.",
   },
 ];
 

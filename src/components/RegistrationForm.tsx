@@ -1,9 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { cloneElement, useId, useMemo, useState } from "react";
 import { AGE_RANGES, EVENT, UPLOAD } from "@/lib/event";
+import { DISTRICTS, SINGLE_PASTORATES, SINGLE_PASTORATE_LABEL, districtLabel } from "@/lib/districts";
 import { supabase } from "@/lib/supabase/client";
 import { extensionForMimeType, validateUploadFile } from "@/lib/validateUpload";
+
+type ChurchMode = "district" | "single_pastorate" | "other";
 
 type Attendee = {
   firstName: string;
@@ -20,14 +23,30 @@ const labelClass = "text-sm font-semibold text-navy-900";
 
 export default function RegistrationForm() {
   const [idempotencyKey] = useState(() => crypto.randomUUID());
+  const proofFileInputId = useId();
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [district, setDistrict] = useState("");
-  const [churchName, setChurchName] = useState("");
   const [city, setCity] = useState("");
+
+  const [churchMode, setChurchMode] = useState<ChurchMode>("district");
+  const [districtCode, setDistrictCode] = useState("");
+  const [districtChurch, setDistrictChurch] = useState("");
+  const [pastorName, setPastorName] = useState("");
+  const [pastorateChurch, setPastorateChurch] = useState("");
+  const [otherDistrict, setOtherDistrict] = useState("");
+  const [otherChurch, setOtherChurch] = useState("");
+
+  const selectedDistrict = DISTRICTS.find((d) => d.code === districtCode);
+  const selectedPastorate = SINGLE_PASTORATES.find((p) => p.pastor === pastorName);
+
+  const { district, churchName } = useMemo(() => {
+    if (churchMode === "district") return { district: districtCode, churchName: districtChurch };
+    if (churchMode === "single_pastorate") return { district: SINGLE_PASTORATE_LABEL, churchName: pastorateChurch };
+    return { district: otherDistrict.trim(), churchName: otherChurch.trim() };
+  }, [churchMode, districtCode, districtChurch, pastorateChurch, otherDistrict, otherChurch]);
 
   const [attendees, setAttendees] = useState<Attendee[]>([{ ...emptyAttendee }]);
 
@@ -152,14 +171,128 @@ export default function RegistrationForm() {
             <input type="tel" className={inputClass} value={phone} onChange={(e) => setPhone(e.target.value)} required />
           </Field>
         </div>
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="District">
-            <input className={inputClass} value={district} onChange={(e) => setDistrict(e.target.value)} required />
-          </Field>
-          <Field label="Church">
-            <input className={inputClass} value={churchName} onChange={(e) => setChurchName(e.target.value)} required />
-          </Field>
+        <div className="mt-4">
+          <span className={labelClass}>Church</span>
+          <div className="mt-1 flex gap-2">
+            <ModeButton active={churchMode === "district"} onClick={() => setChurchMode("district")}>
+              District
+            </ModeButton>
+            <ModeButton active={churchMode === "single_pastorate"} onClick={() => setChurchMode("single_pastorate")}>
+              Single Pastorate
+            </ModeButton>
+            <ModeButton active={churchMode === "other"} onClick={() => setChurchMode("other")}>
+              Other
+            </ModeButton>
+          </div>
+
+          {churchMode === "district" && (
+            <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field label="District / Pastor">
+                <select
+                  className={inputClass}
+                  value={districtCode}
+                  onChange={(e) => {
+                    setDistrictCode(e.target.value);
+                    setDistrictChurch("");
+                  }}
+                  required
+                >
+                  <option value="" disabled>
+                    Select your district or pastor
+                  </option>
+                  {DISTRICTS.map((d) => (
+                    <option key={d.code} value={d.code}>
+                      {districtLabel(d)}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Church">
+                <select
+                  className={inputClass}
+                  value={districtChurch}
+                  onChange={(e) => setDistrictChurch(e.target.value)}
+                  disabled={!selectedDistrict}
+                  required
+                >
+                  <option value="" disabled>
+                    {selectedDistrict ? "Select your church" : "Select a district first"}
+                  </option>
+                  {selectedDistrict?.churches.map((church) => (
+                    <option key={church} value={church}>
+                      {church}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+          )}
+
+          {churchMode === "single_pastorate" && (
+            <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field label="Pastor">
+                <select
+                  className={inputClass}
+                  value={pastorName}
+                  onChange={(e) => {
+                    setPastorName(e.target.value);
+                    setPastorateChurch("");
+                  }}
+                  required
+                >
+                  <option value="" disabled>
+                    Select your pastor
+                  </option>
+                  {SINGLE_PASTORATES.map((p) => (
+                    <option key={p.pastor} value={p.pastor}>
+                      {p.pastor}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Church">
+                <select
+                  className={inputClass}
+                  value={pastorateChurch}
+                  onChange={(e) => setPastorateChurch(e.target.value)}
+                  disabled={!selectedPastorate}
+                  required
+                >
+                  <option value="" disabled>
+                    {selectedPastorate ? "Select your church" : "Select a pastor first"}
+                  </option>
+                  {selectedPastorate?.churches.map((church) => (
+                    <option key={church} value={church}>
+                      {church}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+          )}
+
+          {churchMode === "other" && (
+            <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field label="District">
+                <input
+                  className={inputClass}
+                  value={otherDistrict}
+                  onChange={(e) => setOtherDistrict(e.target.value)}
+                  required
+                />
+              </Field>
+              <Field label="Church">
+                <input
+                  className={inputClass}
+                  value={otherChurch}
+                  onChange={(e) => setOtherChurch(e.target.value)}
+                  required
+                />
+              </Field>
+            </div>
+          )}
         </div>
+
         <div className="mt-4">
           <Field label="City">
             <input className={inputClass} value={city} onChange={(e) => setCity(e.target.value)} required />
@@ -274,8 +407,11 @@ export default function RegistrationForm() {
         </div>
 
         <div className="mt-4">
-          <label className={labelClass}>Proof of Payment (picture given to your AY leader)</label>
+          <label htmlFor={proofFileInputId} className={labelClass}>
+            Proof of Payment (picture given to your AY leader)
+          </label>
           <input
+            id={proofFileInputId}
             type="file"
             accept={UPLOAD.acceptedMimeTypes.join(",")}
             onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
@@ -316,12 +452,37 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: React.ReactElement }) {
+  const id = useId();
   return (
-    <label className="block">
-      <span className={labelClass}>{label}</span>
+    <div className="block">
+      <label htmlFor={id} className={`block ${labelClass}`}>
+        {label}
+      </label>
+      {cloneElement(children, { id })}
+    </div>
+  );
+}
+
+function ModeButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex-1 rounded-full border py-2 text-xs font-semibold transition sm:text-sm ${
+        active ? "border-gold-600 bg-gold-600 text-white" : "border-navy-900/20 text-navy-900/70"
+      }`}
+    >
       {children}
-    </label>
+    </button>
   );
 }
 

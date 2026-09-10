@@ -7,6 +7,15 @@ for admins to review payments and see stats.
 Placeholder event details (dates, location, theme, audience, fee) live in
 `src/lib/event.ts` — edit that file once the real details are confirmed.
 
+The district/pastor/church list used by the registration form's dropdowns
+lives in `src/lib/districts.ts`, transcribed from the Area 2 district
+realignment memo. **Two entries there are best-effort reads of text that was
+cut off by a page break in the source scan and need to be double-checked:**
+"Manresa Company" under QC-1, and "Kaysakat Mission Group" under QC-2. The
+"Glenn Lagabon" / "Daniel Dela Paz" single-pastorate pairing is also an
+uncertain read — confirm which one is the pastor's name and which is the
+church. Edit `src/lib/districts.ts` to correct any of these.
+
 ## Setup
 
 1. **Install dependencies**

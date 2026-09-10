@@ -1,3 +1,4 @@
+import { SINGLE_PASTORATE_LABEL } from "@/lib/districts";
 import type { Registration } from "@/lib/types";
 
 const HEADERS = [
@@ -44,6 +45,19 @@ function naturalCompare(a: string, b: string) {
   return 0;
 }
 
+// QC districts sort first (numerically), then Single Pastorate, then
+// anything else (free-text "Other" entries, blanks) sorts last.
+function districtSortPriority(label: string) {
+  if (/^QC-\d+$/i.test(label)) return 0;
+  if (label === SINGLE_PASTORATE_LABEL) return 1;
+  return 2;
+}
+
+function compareDistricts(a: string, b: string) {
+  const priorityDiff = districtSortPriority(a) - districtSortPriority(b);
+  return priorityDiff !== 0 ? priorityDiff : naturalCompare(a, b);
+}
+
 function toRow(registration: Registration, attendee: Registration["attendees"][number]) {
   return [
     registration.id,
@@ -82,7 +96,7 @@ export function exportRegistrationsToCsv(registrations: Registration[]) {
   const rows: (string | number)[][] = [HEADERS];
 
   const districtGroups = groupBy(registrations, (r) => r.district).sort((a, b) =>
-    naturalCompare(a.label, b.label)
+    compareDistricts(a.label, b.label)
   );
 
   districtGroups.forEach((districtGroup, districtIndex) => {
