@@ -245,7 +245,7 @@ export default function RegistrationForm() {
                   </option>
                   {SINGLE_PASTORATES.map((p) => (
                     <option key={p.pastor} value={p.pastor}>
-                      {p.pastor}
+                      Pastor {p.pastor}
                     </option>
                   ))}
                 </select>
