@@ -14,8 +14,8 @@ export default function HomePage() {
         <Image
           src="/images/sanctuary-banner.jpg"
           alt={`${EVENT.name} — ${EVENT.theme}`}
-          width={1219}
-          height={600}
+          width={1208}
+          height={605}
           priority
           className="h-72 w-full object-cover object-top sm:h-96 md:h-[30rem]"
         />

@@ -1,7 +1,7 @@
 // Placeholder event details. Update these when the real details are confirmed.
 export const EVENT = {
   name: "Sanctuary Camp 2026",
-  theme: "Sanctuary: The God Who Dwells Within Us",
+  theme: "Sanctuary: The God Who Dwells with Us",
   verse: "“And let them make Me a sanctuary; that I may dwell among them.”",
   verseRef: "Exodus 25:8",
   dateStart: "2026-10-16",

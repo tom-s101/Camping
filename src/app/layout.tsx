@@ -6,9 +6,34 @@ import "./globals.css";
 const inter = Inter({ variable: "--font-sans", subsets: ["latin"] });
 const lora = Lora({ variable: "--font-serif", subsets: ["latin"] });
 
+const title = `${EVENT.name} | ${EVENT.theme}`;
+const description = `Register for ${EVENT.name}, ${EVENT.dateLabel} at ${EVENT.locationName}, ${EVENT.locationDetail}.`;
+const bannerImage = {
+  url: "/images/sanctuary-banner.jpg",
+  width: 1208,
+  height: 605,
+  alt: `${EVENT.name} — ${EVENT.theme}`,
+};
+
 export const metadata: Metadata = {
-  title: `${EVENT.name} | ${EVENT.theme}`,
-  description: `Register for ${EVENT.name}, ${EVENT.dateLabel} at ${EVENT.locationName}, ${EVENT.locationDetail}.`,
+  // Needed so the relative banner path below resolves to a full URL in
+  // shared-link previews. Set NEXT_PUBLIC_SITE_URL to the real deployed
+  // domain once known.
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://example.com"),
+  title,
+  description,
+  openGraph: {
+    title,
+    description,
+    images: [bannerImage],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+    images: [bannerImage.url],
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

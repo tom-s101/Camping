@@ -42,6 +42,9 @@ church. Edit `src/lib/districts.ts` to correct any of these.
      `Admin` / `area2camp` if unset; **change these before the site goes live.**
    - `SESSION_SECRET` — any long random string, used to sign the admin session
      cookie.
+   - `NEXT_PUBLIC_SITE_URL` — the site's real deployed URL. **Set this once you
+     know the final domain**, or shared-link previews (Facebook, Messenger,
+     iMessage, etc.) won't show the banner image correctly.
 
 4. **Run it**
 
