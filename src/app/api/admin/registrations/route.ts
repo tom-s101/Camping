@@ -31,7 +31,10 @@ export async function GET(request: NextRequest) {
       })
     );
 
-    return NextResponse.json({ registrations: withSignedUrls });
+    return NextResponse.json(
+      { registrations: withSignedUrls },
+      { headers: { "Cache-Control": "no-store" } }
+    );
   } catch (err) {
     console.error("GET /api/admin/registrations failed:", err);
     return NextResponse.json({ error: "Could not load registrations." }, { status: 500 });

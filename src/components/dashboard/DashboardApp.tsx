@@ -17,12 +17,13 @@ export default function DashboardApp() {
   const [query, setQuery] = useState("");
   const [stats, setStats] = useState<Stats | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   async function fetchRegistrations(q: string) {
     setLoading(true);
     setLoadError(null);
     try {
-      const res = await fetch(`/api/admin/registrations?q=${encodeURIComponent(q)}`);
+      const res = await fetch(`/api/admin/registrations?q=${encodeURIComponent(q)}`, { cache: "no-store" });
       if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? "Request failed.");
       const body = await res.json();
       setRegistrations(body.registrations);
@@ -41,7 +42,7 @@ export default function DashboardApp() {
 
   async function fetchStats() {
     try {
-      const res = await fetch("/api/admin/stats");
+      const res = await fetch("/api/admin/stats", { cache: "no-store" });
       if (!res.ok) throw new Error("Request failed.");
       setStats(await res.json());
     } catch {
@@ -134,7 +135,7 @@ export default function DashboardApp() {
               ) : (
                 <div className="space-y-3">
                   {registrations.map((r) => (
-                    <RegistrationCard key={r.id} registration={r} onReview={handleReview} />
+                    <RegistrationCard key={r.id} registration={r} onReview={handleReview} onPreviewImage={setPreviewImage} />
                   ))}
                 </div>
               )}
@@ -146,7 +147,9 @@ export default function DashboardApp() {
               {rejected.length === 0 ? (
                 <p className="text-sm text-navy-900/50">No rejected payments.</p>
               ) : (
-                rejected.map((r) => <RegistrationCard key={r.id} registration={r} onReview={handleReview} />)
+                rejected.map((r) => (
+                  <RegistrationCard key={r.id} registration={r} onReview={handleReview} onPreviewImage={setPreviewImage} />
+                ))
               )}
             </div>
           )}
@@ -154,6 +157,28 @@ export default function DashboardApp() {
           {tab === "stats" && <StatsTab stats={stats} />}
         </div>
       </div>
+
+      {previewImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setPreviewImage(null)}
+        >
+          <button
+            type="button"
+            onClick={() => setPreviewImage(null)}
+            className="absolute right-4 top-4 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white hover:bg-white/20"
+          >
+            Close
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={previewImage}
+            alt="Payment proof, full size"
+            className="max-h-full max-w-full rounded-lg object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }

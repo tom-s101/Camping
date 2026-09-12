@@ -41,7 +41,7 @@ export async function GET() {
       }
     }
 
-    return NextResponse.json(stats);
+    return NextResponse.json(stats, { headers: { "Cache-Control": "no-store" } });
   } catch (err) {
     console.error("GET /api/admin/stats failed:", err);
     return NextResponse.json({ error: "Could not load stats." }, { status: 500 });

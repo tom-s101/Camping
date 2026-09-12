@@ -28,8 +28,16 @@ export default function RegistrationForm() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  const [confirmEmail, setConfirmEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [city, setCity] = useState("");
+
+  const emailFormatError =
+    email.length > 0 && !/^\S+@\S+\.\S+$/.test(email) ? "Please enter a valid email address." : null;
+  const emailMatchError =
+    confirmEmail.length > 0 && confirmEmail.trim().toLowerCase() !== email.trim().toLowerCase()
+      ? "Email addresses do not match."
+      : null;
 
   const [churchMode, setChurchMode] = useState<ChurchMode>("district");
   const [districtCode, setDistrictCode] = useState("");
@@ -70,10 +78,28 @@ export default function RegistrationForm() {
 
   const canSubmit = useMemo(() => {
     if (submitting) return false;
-    if (!firstName || !lastName || !email || !phone || !district || !churchName || !city) return false;
+    if (!firstName || !lastName || !email || !confirmEmail || !phone || !district || !churchName || !city) {
+      return false;
+    }
+    if (emailFormatError || emailMatchError) return false;
     if (!paymentReference || !proofFile) return false;
     return attendees.every((a) => a.firstName && a.lastName && a.ageRange && a.gender);
-  }, [submitting, firstName, lastName, email, phone, district, churchName, city, paymentReference, proofFile, attendees]);
+  }, [
+    submitting,
+    firstName,
+    lastName,
+    email,
+    confirmEmail,
+    emailFormatError,
+    emailMatchError,
+    phone,
+    district,
+    churchName,
+    city,
+    paymentReference,
+    proofFile,
+    attendees,
+  ]);
 
   async function handleFileChange(file: File | null) {
     setProofFile(null);
@@ -95,8 +121,8 @@ export default function RegistrationForm() {
       setError("Please upload your proof of payment.");
       return;
     }
-    if (!/^\S+@\S+\.\S+$/.test(email)) {
-      setError("Please enter a valid email address.");
+    if (emailFormatError || emailMatchError) {
+      setError(emailFormatError ?? emailMatchError);
       return;
     }
 
@@ -153,7 +179,7 @@ export default function RegistrationForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} noValidate className="space-y-6">
       <Card title="Primary Contact">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="First Name">
@@ -167,6 +193,21 @@ export default function RegistrationForm() {
           <Field label="Email Address">
             <input type="email" className={inputClass} value={email} onChange={(e) => setEmail(e.target.value)} required />
           </Field>
+          <div>
+            <Field label="Confirm Email Address">
+              <input
+                type="email"
+                className={inputClass}
+                value={confirmEmail}
+                onChange={(e) => setConfirmEmail(e.target.value)}
+                required
+              />
+            </Field>
+            {emailMatchError && <p className="mt-1 text-xs font-semibold text-red-600">{emailMatchError}</p>}
+          </div>
+        </div>
+        {emailFormatError && <p className="mt-1 text-xs font-semibold text-red-600">{emailFormatError}</p>}
+        <div className="mt-4">
           <Field label="Phone Number">
             <input type="tel" className={inputClass} value={phone} onChange={(e) => setPhone(e.target.value)} required />
           </Field>

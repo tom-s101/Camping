@@ -12,9 +12,11 @@ const STATUS_STYLES: Record<Registration["payment_status"], string> = {
 export default function RegistrationCard({
   registration,
   onReview,
+  onPreviewImage,
 }: {
   registration: Registration;
   onReview: (id: string, action: "approve" | "reject") => Promise<void>;
+  onPreviewImage: (url: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -27,31 +29,54 @@ export default function RegistrationCard({
 
   return (
     <div className="rounded-lg border border-navy-900/10 bg-white">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
-      >
-        <div className="min-w-0">
-          <p className="truncate font-semibold text-navy-900">
-            {registration.contact_first_name} {registration.contact_last_name}
-          </p>
-          <p className="truncate text-xs text-navy-900/50">
-            {registration.district} &middot; {registration.church_name} &middot; {registration.city}
-          </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {registration.group_size > 1 && (
-            <span className="rounded-full bg-gold-600/10 px-2.5 py-1 text-xs font-semibold text-gold-700">
-              Group of {registration.group_size}
-            </span>
+      <div className="flex items-center gap-3 px-4 py-3">
+        <button
+          type="button"
+          disabled={!registration.payment_proof_url}
+          onClick={() => registration.payment_proof_url && onPreviewImage(registration.payment_proof_url)}
+          className="shrink-0"
+        >
+          {registration.payment_proof_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={registration.payment_proof_url}
+              alt="Payment proof"
+              className="h-14 w-14 rounded-md border border-navy-900/10 object-cover"
+            />
+          ) : (
+            <div className="flex h-14 w-14 items-center justify-center rounded-md border border-dashed border-navy-900/20 text-[9px] text-navy-900/40">
+              No image
+            </div>
           )}
-          <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_STYLES[registration.payment_status]}`}>
-            {registration.payment_status}
-          </span>
-          <span className="text-navy-900/40">{open ? "−" : "+"}</span>
-        </div>
-      </button>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left"
+        >
+          <div className="min-w-0">
+            <p className="truncate font-semibold text-navy-900">
+              {registration.contact_first_name} {registration.contact_last_name}
+            </p>
+            <p className="truncate text-xs text-navy-900/50">
+              {registration.district} &middot; {registration.church_name} &middot; {registration.city}
+            </p>
+            <p className="truncate text-xs text-navy-900/60">Ref: {registration.payment_reference}</p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            {registration.group_size > 1 && (
+              <span className="rounded-full bg-gold-600/10 px-2.5 py-1 text-xs font-semibold text-gold-700">
+                Group of {registration.group_size}
+              </span>
+            )}
+            <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_STYLES[registration.payment_status]}`}>
+              {registration.payment_status}
+            </span>
+            <span className="text-navy-900/40">{open ? "−" : "+"}</span>
+          </div>
+        </button>
+      </div>
 
       {open && (
         <div className="border-t border-navy-900/10 px-4 py-4 text-sm">
@@ -66,14 +91,13 @@ export default function RegistrationCard({
               <p className="mt-1 text-navy-900">₱{Number(registration.total_amount_php).toLocaleString()}</p>
               <p className="text-navy-900">Ref: {registration.payment_reference}</p>
               {registration.payment_proof_url && (
-                <a
-                  href={registration.payment_proof_url}
-                  target="_blank"
-                  rel="noreferrer"
+                <button
+                  type="button"
+                  onClick={() => onPreviewImage(registration.payment_proof_url!)}
                   className="mt-1 inline-block text-gold-700 underline"
                 >
                   View proof of payment
-                </a>
+                </button>
               )}
             </div>
           </div>
