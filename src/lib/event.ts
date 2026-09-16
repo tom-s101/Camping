@@ -14,7 +14,26 @@ export const EVENT = {
   feePhp: 700,
 } as const;
 
-export const AGE_RANGES = ["0-5", "6-12", "13-17", "18-25", "26-40", "41-60", "61+"] as const;
+export const AGE_RANGES = [
+  "0-12",
+  "13",
+  "14",
+  "15",
+  "16",
+  "17",
+  "18",
+  "19",
+  "20",
+  "21",
+  "22",
+  "23",
+  "24",
+  "25",
+  "26",
+  "27",
+  "28-35",
+  "36+",
+] as const;
 
 export const UPLOAD = {
   maxBytes: 2 * 1024 * 1024,

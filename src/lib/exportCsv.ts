@@ -1,3 +1,4 @@
+import { formatCampId } from "@/lib/campId";
 import { SINGLE_PASTORATE_LABEL } from "@/lib/districts";
 import type { Registration } from "@/lib/types";
 
@@ -58,13 +59,9 @@ function compareDistricts(a: string, b: string) {
   return priorityDiff !== 0 ? priorityDiff : naturalCompare(a, b);
 }
 
-function formatCampId(n: number) {
-  return `Camp-${String(n).padStart(3, "0")}`;
-}
-
-function toRow(campNumber: number, registration: Registration, attendee: Registration["attendees"][number]) {
+function toRow(registration: Registration, attendee: Registration["attendees"][number]) {
   return [
-    formatCampId(campNumber),
+    formatCampId(attendee.camp_number),
     registration.created_at,
     registration.contact_first_name,
     registration.contact_last_name,
@@ -98,7 +95,6 @@ function groupBy<T>(items: T[], keyOf: (item: T) => string) {
 export function exportRegistrationsToCsv(registrations: Registration[]) {
   const blankRow = HEADERS.map(() => "");
   const rows: (string | number)[][] = [HEADERS];
-  let campNumber = 0;
 
   const districtGroups = groupBy(registrations, (r) => r.district).sort((a, b) =>
     compareDistricts(a.label, b.label)
@@ -129,14 +125,12 @@ export function exportRegistrationsToCsv(registrations: Registration[]) {
       ]);
 
       for (const registration of churchGroup.items) {
-        const attendees = registration.attendees.length > 0 ? registration.attendees : [null];
+        const attendees =
+          registration.attendees.length > 0
+            ? registration.attendees
+            : [{ id: "", camp_number: 0, first_name: "", last_name: "", age_range: "", gender: "" }];
         for (const attendee of attendees) {
-          campNumber += 1;
-          rows.push(
-            attendee
-              ? toRow(campNumber, registration, attendee)
-              : toRow(campNumber, registration, { id: "", first_name: "", last_name: "", age_range: "", gender: "" })
-          );
+          rows.push(toRow(registration, attendee));
         }
       }
     });

@@ -1,5 +1,6 @@
 export type Attendee = {
   id: string;
+  camp_number: number;
   first_name: string;
   last_name: string;
   age_range: string;

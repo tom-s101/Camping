@@ -2,9 +2,11 @@
 
 import { cloneElement, useId, useMemo, useState } from "react";
 import { AGE_RANGES, EVENT, UPLOAD } from "@/lib/event";
+import { formatCampId } from "@/lib/campId";
 import { DISTRICTS, SINGLE_PASTORATES, SINGLE_PASTORATE_LABEL, districtLabel } from "@/lib/districts";
 import { supabase } from "@/lib/supabase/client";
 import { extensionForMimeType, validateUploadFile } from "@/lib/validateUpload";
+import SubmitLoadingOverlay from "@/components/SubmitLoadingOverlay";
 
 type ChurchMode = "district" | "single_pastorate" | "other";
 
@@ -64,7 +66,7 @@ export default function RegistrationForm() {
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<{ id: string; groupSize: number } | null>(null);
+  const [result, setResult] = useState<{ campNumbers: number[] } | null>(null);
 
   const total = attendees.length * EVENT.feePhp;
 
@@ -156,7 +158,8 @@ export default function RegistrationForm() {
       });
       if (rpcError) throw new Error(rpcError.message);
 
-      setResult({ id: data as string, groupSize: attendees.length });
+      const campNumbers = (data as { registration_id: string; camp_numbers: number[] }).camp_numbers ?? [];
+      setResult({ campNumbers });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {
@@ -165,22 +168,29 @@ export default function RegistrationForm() {
   }
 
   if (result) {
+    const groupSize = result.campNumbers.length;
     return (
       <div className="rounded-xl border border-gold-600/30 bg-white p-8 text-center shadow-sm">
         <h2 className="text-2xl font-bold text-navy-900">You&apos;re registered!</h2>
         <p className="mt-3 text-navy-900/70">
-          We received your registration for {result.groupSize}{" "}
-          {result.groupSize === 1 ? "person" : "people"}. Our team will review your payment and confirm
-          it within a few days.
+          We received your registration for {groupSize} {groupSize === 1 ? "person" : "people"}. Our team
+          will review your payment and confirm it within a few days.
         </p>
-        <p className="mt-4 text-xs text-navy-900/50">Reference ID: {result.id}</p>
+        <p className="mt-4 text-sm font-semibold text-navy-900">
+          {groupSize === 1 ? "Your Camp ID:" : "Your Camp IDs:"}
+        </p>
+        <p className="mt-1 text-lg font-bold tracking-wide text-gold-700">
+          {result.campNumbers.map(formatCampId).join(", ")}
+        </p>
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="space-y-6">
-      <Card title="Primary Contact">
+    <>
+      {submitting && <SubmitLoadingOverlay />}
+      <form onSubmit={handleSubmit} noValidate className="space-y-6">
+        <Card title="Primary Contact">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="First Name">
             <input className={inputClass} value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
@@ -480,7 +490,8 @@ export default function RegistrationForm() {
       >
         {submitting ? "Submitting…" : "Submit Registration"}
       </button>
-    </form>
+      </form>
+    </>
   );
 }
 

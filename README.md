@@ -34,6 +34,10 @@ church. Edit `src/lib/districts.ts` to correct any of these.
      columns and drops the payment-method column (payment is now handled
      in-person through each attendee's AY leader, so there's no method to
      choose on the site).
+   - `0003_camp_number_and_age_ranges.sql` assigns each attendee a permanent,
+     sequential Camp ID (Camp-001, Camp-002, ...) at insert time, and updates
+     the allowed age brackets to single-year granularity (13-27) for the
+     youth camp.
 
 3. **Copy `.env.example` to `.env.local`** and fill in:
    - `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY`

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { formatCampId } from "@/lib/campId";
 import type { Registration } from "@/lib/types";
 
 const STATUS_STYLES: Record<Registration["payment_status"], string> = {
@@ -107,6 +108,7 @@ export default function RegistrationCard({
             <ul className="mt-1 space-y-1">
               {registration.attendees.map((a) => (
                 <li key={a.id} className="text-navy-900">
+                  <span className="font-semibold text-gold-700">{formatCampId(a.camp_number)}</span> &middot;{" "}
                   {a.first_name} {a.last_name} &middot; {a.age_range} &middot; {a.gender}
                 </li>
               ))}
