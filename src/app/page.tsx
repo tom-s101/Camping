@@ -1,9 +1,9 @@
 import Image from "next/image";
-import Link from "next/link";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import FaqAccordion from "@/components/FaqAccordion";
 import SparkleBackground from "@/components/SparkleBackground";
+import LiquidMetalButton from "@/components/LiquidMetalButton";
 import { ArrowRightIcon, MessageCircleIcon, SparkleIcon } from "@/components/icons";
 import { EVENT } from "@/lib/event";
 
@@ -33,12 +33,13 @@ export default function HomePage() {
           <p className="mx-auto mt-5 max-w-xl font-serif text-lg italic text-white/85">{EVENT.verse}</p>
           <p className="mt-1 text-sm text-white/60">{EVENT.verseRef}</p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link
+            <LiquidMetalButton
               href="/register"
-              className="w-full max-w-xs rounded-full bg-gold-600 px-8 py-3 text-sm font-semibold hover:bg-gold-500 sm:w-auto"
+              className="w-full max-w-xs rounded-full sm:w-auto"
+              innerClassName="rounded-full px-8 py-3"
             >
               Register Now
-            </Link>
+            </LiquidMetalButton>
             <a
               href="#about"
               className="w-full max-w-xs rounded-full border border-white/40 px-8 py-3 text-sm font-semibold hover:border-white sm:w-auto"
@@ -49,7 +50,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <div className="mx-auto -mt-14 max-w-4xl px-4 sm:-mt-16">
+      <div className="relative z-10 mx-auto -mt-14 max-w-4xl px-4 sm:-mt-16">
         <div className="grid grid-cols-1 gap-6 rounded-xl bg-white p-6 shadow-lg sm:grid-cols-3 sm:p-8">
           <InfoItem label="When" value={EVENT.dateLabel} />
           <InfoItem label="Where" value={`${EVENT.locationName}, ${EVENT.locationDetail}`} />

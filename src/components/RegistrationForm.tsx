@@ -7,6 +7,7 @@ import { DISTRICTS, SINGLE_PASTORATES, SINGLE_PASTORATE_LABEL, districtLabel } f
 import { supabase } from "@/lib/supabase/client";
 import { extensionForMimeType, validateUploadFile } from "@/lib/validateUpload";
 import SubmitLoadingOverlay from "@/components/SubmitLoadingOverlay";
+import LiquidMetalButton from "@/components/LiquidMetalButton";
 
 type ChurchMode = "district" | "single_pastorate" | "other";
 
@@ -483,13 +484,14 @@ export default function RegistrationForm() {
         <div className="rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
       )}
 
-      <button
+      <LiquidMetalButton
         type="submit"
         disabled={!canSubmit}
-        className="w-full rounded-md bg-navy-950 py-4 text-sm font-bold uppercase tracking-wide text-white transition hover:bg-navy-900 disabled:cursor-not-allowed disabled:opacity-40"
+        className="w-full rounded-md"
+        innerClassName="rounded-md py-4 text-sm font-bold uppercase tracking-wide"
       >
         {submitting ? "Submitting…" : "Submit Registration"}
-      </button>
+      </LiquidMetalButton>
       </form>
     </>
   );

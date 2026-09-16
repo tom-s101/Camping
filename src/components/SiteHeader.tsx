@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { EVENT } from "@/lib/event";
+import LiquidMetalButton from "@/components/LiquidMetalButton";
 
 const NAV_LINKS = [
   { href: "/#about", label: "About" },
@@ -25,12 +26,9 @@ export default function SiteHeader() {
               {link.label}
             </a>
           ))}
-          <Link
-            href="/register"
-            className="rounded-full bg-gold-600 px-5 py-2 text-sm font-semibold hover:bg-gold-500"
-          >
+          <LiquidMetalButton href="/register" className="rounded-full" innerClassName="rounded-full px-5 py-2">
             Register Now
-          </Link>
+          </LiquidMetalButton>
         </nav>
 
         <button
@@ -65,13 +63,14 @@ export default function SiteHeader() {
               {link.label}
             </a>
           ))}
-          <Link
+          <LiquidMetalButton
             href="/register"
             onClick={() => setOpen(false)}
-            className="mt-2 rounded-full bg-gold-600 px-5 py-3 text-center text-sm font-semibold"
+            className="mt-2 w-full rounded-full"
+            innerClassName="rounded-full px-5 py-3"
           >
             Register Now
-          </Link>
+          </LiquidMetalButton>
         </nav>
       )}
     </header>
