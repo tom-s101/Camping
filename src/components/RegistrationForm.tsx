@@ -6,10 +6,13 @@ import { AGE_RANGES } from "@/lib/event";
 import { formatCampId } from "@/lib/campId";
 import { DISTRICTS, SINGLE_PASTORATES, SINGLE_PASTORATE_LABEL, districtLabel } from "@/lib/districts";
 import {
-  PRICING_TIERS,
+  EARLY_BIRD_CUTOFF_LABEL,
+  SHIRT_CUTOFF_LABEL,
   SHIRT_SIZES,
   estimateFeePhp,
   getActiveShirtOptions,
+  isEarlyBird,
+  isShirtAvailable,
   localDateISO,
   type ShirtChoice,
   type ShirtSize,
@@ -28,6 +31,7 @@ import {
 } from "@/lib/campContent";
 import SubmitLoadingOverlay from "@/components/SubmitLoadingOverlay";
 import LiquidMetalButton from "@/components/LiquidMetalButton";
+import Modal from "@/components/Modal";
 
 type ChurchMode = "district" | "single_pastorate" | "other";
 
@@ -98,10 +102,16 @@ export default function RegistrationForm() {
     return singleShirtOption ? singleShirtOption.choice : a.shirtChoice;
   }
 
-  const estimatedTotal = attendees.reduce((sum, a) => {
+  const totalDue = attendees.reduce((sum, a) => {
     const choice = effectiveShirtChoice(a) || "without";
     return sum + estimateFeePhp(today, choice === "with");
   }, 0);
+
+  const pricingNote = isEarlyBird(today)
+    ? `Early Bird pricing — through ${EARLY_BIRD_CUTOFF_LABEL} only.`
+    : isShirtAvailable(today)
+    ? `Through ${SHIRT_CUTOFF_LABEL} only.`
+    : "Standard / walk-in rate.";
 
   const [openedGuidelines, setOpenedGuidelines] = useState(false);
   const [openedRefundPolicy, setOpenedRefundPolicy] = useState(false);
@@ -157,14 +167,14 @@ export default function RegistrationForm() {
   }
 
   function guidelinesError(): string | null {
-    if (!openedGuidelines) return "Please expand and read the Camp Rules & Guidelines, then check the box to agree.";
+    if (!openedGuidelines) return "Please open and read the Camp Rules & Guidelines, then check the box to agree.";
     if (!agreedGuidelines) return "Please check the box to agree to the Camp Rules & Guidelines.";
     return null;
   }
 
   function refundError(): string | null {
     if (!openedRefundPolicy) {
-      return "Please expand and read the Cancellation & Transfer Policy, then check the box to agree.";
+      return "Please open and read the Cancellation & Transfer Policy, then check the box to agree.";
     }
     if (!agreedRefundPolicy) return "Please check the box to agree to the Cancellation & Transfer Policy.";
     return null;
@@ -204,7 +214,10 @@ export default function RegistrationForm() {
     setInvalidKey(firstInvalid.key);
     const el = firstInvalid.ref.current;
     el?.scrollIntoView({ behavior: "smooth", block: "center" });
-    el?.querySelector<HTMLElement>("input, select, textarea, summary")?.focus();
+    const focusTarget =
+      el?.querySelector<HTMLElement>("input:not(:disabled), select:not(:disabled), textarea:not(:disabled)") ??
+      el?.querySelector<HTMLElement>("button");
+    focusTarget?.focus();
     return false;
   }
 
@@ -452,24 +465,19 @@ export default function RegistrationForm() {
       </Card>
 
       <Card title="Pricing & Camp Shirt">
-        <p className="text-sm text-navy-900/70">Pricing depends on when you register:</p>
-        <div className="mt-3 overflow-hidden rounded-lg border border-navy-900/10">
+        <div className="overflow-hidden rounded-lg border border-navy-900/10">
           <table className="w-full text-left text-sm">
             <tbody>
-              {PRICING_TIERS.map((tier) => (
-                <tr key={tier.label} className="border-b border-navy-900/10 last:border-0">
-                  <td className="px-3 py-2 font-semibold text-navy-900">{tier.label}</td>
-                  <td className="hidden px-3 py-2 text-xs text-navy-900/60 sm:table-cell">{tier.note}</td>
-                  <td className="px-3 py-2 text-right font-bold text-gold-700">₱{tier.price}</td>
+              {activeShirtOptions.map((opt) => (
+                <tr key={opt.choice} className="border-b border-navy-900/10 last:border-0">
+                  <td className="px-3 py-2 font-semibold text-navy-900">{opt.label}</td>
+                  <td className="px-3 py-2 text-right font-bold text-gold-700">₱{opt.price}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        <p className="mt-2 text-xs text-navy-900/50">
-          Your final price is confirmed by our system when you submit, based on that date — not your
-          device&apos;s clock.
-        </p>
+        <p className="mt-2 text-xs text-navy-900/50">{pricingNote}</p>
 
         <div className="mt-5 grid grid-cols-2 gap-3">
           <Image
@@ -622,7 +630,7 @@ export default function RegistrationForm() {
                     </div>
                   )}
                   <p className="mt-2 text-xs font-semibold text-gold-700">
-                    Estimated fee for this person: ₱{estimateFeePhp(today, choice === "with").toLocaleString()}
+                    Fee for this person: ₱{estimateFeePhp(today, choice === "with").toLocaleString()}
                   </p>
                 </div>
                 {rowError && <p className="mt-3 text-sm font-semibold text-red-600">{rowError}</p>}
@@ -646,6 +654,7 @@ export default function RegistrationForm() {
         errorMessage={guidelinesError()}
       >
         <ExpandableAgreement
+          title="Camp Rules & Guidelines"
           summary="View the full Camp Rules and Guidelines"
           hasOpened={openedGuidelines}
           onOpen={() => setOpenedGuidelines(true)}
@@ -653,11 +662,14 @@ export default function RegistrationForm() {
           onChange={setAgreedGuidelines}
           agreementText={GUIDELINES_AGREEMENT_TEXT}
         >
-          <ol className="list-decimal space-y-2 pl-5">
+          <div className="space-y-3">
             {CAMP_RULES.map((rule, i) => (
-              <li key={i}>{rule}</li>
+              <div key={i} className="flex gap-2.5">
+                <span className="shrink-0 font-bold text-gold-700">{i + 1}.</span>
+                <p>{rule}</p>
+              </div>
             ))}
-          </ol>
+          </div>
         </ExpandableAgreement>
       </Card>
 
@@ -668,6 +680,7 @@ export default function RegistrationForm() {
         errorMessage={refundError()}
       >
         <ExpandableAgreement
+          title="Cancellation & Transfer Policy"
           summary="View the Cancellation and Transfer Policy"
           hasOpened={openedRefundPolicy}
           onOpen={() => setOpenedRefundPolicy(true)}
@@ -723,9 +736,9 @@ export default function RegistrationForm() {
         errorMessage={paymentError()}
       >
         <p className="text-sm text-navy-900/70">
-          Estimated total due for {attendees.length} {attendees.length === 1 ? "person" : "people"}:
+          Total due for {attendees.length} {attendees.length === 1 ? "person" : "people"}:
         </p>
-        <p className="mt-1 text-3xl font-extrabold text-navy-900">₱{estimatedTotal.toLocaleString()}</p>
+        <p className="mt-1 text-3xl font-extrabold text-navy-900">₱{totalDue.toLocaleString()}</p>
 
         <div className="mt-5 rounded-lg bg-cream p-4 text-sm text-navy-900/80">
           <p className="font-semibold text-navy-900">Registration Payment Confirmation</p>
@@ -781,6 +794,7 @@ export default function RegistrationForm() {
 }
 
 function ExpandableAgreement({
+  title,
   summary,
   children,
   hasOpened,
@@ -789,6 +803,7 @@ function ExpandableAgreement({
   onChange,
   agreementText,
 }: {
+  title: string;
   summary: string;
   children: ReactNode;
   hasOpened: boolean;
@@ -797,18 +812,23 @@ function ExpandableAgreement({
   onChange: (value: boolean) => void;
   agreementText: string;
 }) {
+  const [open, setOpen] = useState(false);
+
   return (
     <div>
-      <details
-        onToggle={(e) => {
-          if ((e.target as HTMLDetailsElement).open) onOpen();
+      <button
+        type="button"
+        onClick={() => {
+          setOpen(true);
+          onOpen();
         }}
+        className="text-sm font-semibold text-gold-700 underline underline-offset-2"
       >
-        <summary className="cursor-pointer text-sm font-semibold text-gold-700">{summary}</summary>
-        <div className="mt-3 max-h-64 overflow-y-auto pr-2 text-sm leading-relaxed text-navy-900/80">
-          {children}
-        </div>
-      </details>
+        {summary}
+      </button>
+      <Modal open={open} onClose={() => setOpen(false)} title={title}>
+        {children}
+      </Modal>
       <label
         className={`mt-4 flex items-start gap-2.5 text-sm ${hasOpened ? "text-navy-900" : "text-navy-900/40"}`}
       >
@@ -822,7 +842,7 @@ function ExpandableAgreement({
         <span>{agreementText}</span>
       </label>
       {!hasOpened && (
-        <p className="mt-1 text-xs text-navy-900/40">Please expand and read the section above first.</p>
+        <p className="mt-1 text-xs text-navy-900/40">Please open and read the section above first.</p>
       )}
     </div>
   );
