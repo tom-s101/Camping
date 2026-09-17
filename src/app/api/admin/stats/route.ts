@@ -7,7 +7,7 @@ export async function GET() {
   try {
     const { data: registrations, error } = await supabaseAdmin
       .from("registrations")
-      .select("payment_status, total_amount_php, attendees(age_range, gender)");
+      .select("payment_status, total_amount_php, attendees(age_range, gender, wants_shirt, shirt_size)");
 
     if (error) throw error;
 
@@ -21,6 +21,8 @@ export async function GET() {
       rejectedGroups: 0,
       byGender: { male: 0, female: 0 } as Record<string, number>,
       byAgeRange: {} as Record<string, number>,
+      shirtsRequested: 0,
+      byShirtSize: {} as Record<string, number>,
     };
 
     for (const reg of registrations ?? []) {
@@ -38,6 +40,10 @@ export async function GET() {
       for (const attendee of reg.attendees ?? []) {
         if (attendee.gender) stats.byGender[attendee.gender] = (stats.byGender[attendee.gender] ?? 0) + 1;
         if (attendee.age_range) stats.byAgeRange[attendee.age_range] = (stats.byAgeRange[attendee.age_range] ?? 0) + 1;
+        if (attendee.wants_shirt) {
+          stats.shirtsRequested += 1;
+          if (attendee.shirt_size) stats.byShirtSize[attendee.shirt_size] = (stats.byShirtSize[attendee.shirt_size] ?? 0) + 1;
+        }
       }
     }
 

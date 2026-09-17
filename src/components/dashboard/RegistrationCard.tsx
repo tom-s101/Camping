@@ -31,25 +31,33 @@ export default function RegistrationCard({
   return (
     <div className="rounded-lg border border-navy-900/10 bg-white">
       <div className="flex items-center gap-3 px-4 py-3">
-        <button
-          type="button"
-          disabled={!registration.payment_proof_url}
-          onClick={() => registration.payment_proof_url && onPreviewImage(registration.payment_proof_url)}
-          className="shrink-0"
-        >
-          {registration.payment_proof_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
+        {registration.payment_proof_url ? (
+          <button type="button" onClick={() => onPreviewImage(registration.payment_proof_url!)} className="shrink-0">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={registration.payment_proof_url}
               alt="Payment proof"
               className="h-14 w-14 rounded-md border border-navy-900/10 object-cover"
             />
-          ) : (
-            <div className="flex h-14 w-14 items-center justify-center rounded-md border border-dashed border-navy-900/20 text-[9px] text-navy-900/40">
-              No image
-            </div>
-          )}
-        </button>
+          </button>
+        ) : (
+          <div
+            className={`flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-md border text-[9px] font-semibold ${
+              registration.confirmed_payment
+                ? "border-green-200 bg-green-50 text-green-700"
+                : "border-dashed border-navy-900/20 text-navy-900/40"
+            }`}
+          >
+            {registration.confirmed_payment ? (
+              <>
+                <span>Payment</span>
+                <span>Confirmed</span>
+              </>
+            ) : (
+              "No confirmation"
+            )}
+          </div>
+        )}
 
         <button
           type="button"
@@ -63,9 +71,14 @@ export default function RegistrationCard({
             <p className="truncate text-xs text-navy-900/50">
               {registration.district} &middot; {registration.church_name} &middot; {registration.city}
             </p>
-            <p className="truncate text-xs text-navy-900/60">Ref: {registration.payment_reference}</p>
+            {registration.payment_reference && (
+              <p className="truncate text-xs text-navy-900/60">Ref: {registration.payment_reference}</p>
+            )}
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            {registration.has_minor && (
+              <span className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700">Minor</span>
+            )}
             {registration.group_size > 1 && (
               <span className="rounded-full bg-gold-600/10 px-2.5 py-1 text-xs font-semibold text-gold-700">
                 Group of {registration.group_size}
@@ -90,7 +103,10 @@ export default function RegistrationCard({
             <div>
               <p className="text-xs font-semibold uppercase text-navy-900/40">Payment</p>
               <p className="mt-1 text-navy-900">₱{Number(registration.total_amount_php).toLocaleString()}</p>
-              <p className="text-navy-900">Ref: {registration.payment_reference}</p>
+              <p className={registration.confirmed_payment ? "font-semibold text-green-700" : "text-navy-900/50"}>
+                {registration.confirmed_payment ? "Payment confirmed by registrant" : "Not yet confirmed"}
+              </p>
+              {registration.payment_reference && <p className="text-navy-900">Ref: {registration.payment_reference}</p>}
               {registration.payment_proof_url && (
                 <button
                   type="button"
@@ -103,6 +119,12 @@ export default function RegistrationCard({
             </div>
           </div>
 
+          {registration.has_minor && (
+            <p className="mt-3 text-xs font-semibold text-red-700">
+              This group includes a minor. Guardian waiver {registration.agreed_minor_waiver ? "acknowledged" : "NOT acknowledged"} at signup.
+            </p>
+          )}
+
           <div className="mt-4">
             <p className="text-xs font-semibold uppercase text-navy-900/40">Attendees</p>
             <ul className="mt-1 space-y-1">
@@ -110,6 +132,8 @@ export default function RegistrationCard({
                 <li key={a.id} className="text-navy-900">
                   <span className="font-semibold text-gold-700">{formatCampId(a.camp_number)}</span> &middot;{" "}
                   {a.first_name} {a.last_name} &middot; {a.age_range} &middot; {a.gender}
+                  {a.wants_shirt && <> &middot; Shirt: {a.shirt_size ?? "—"}</>}
+                  {a.fee_php !== null && <> &middot; ₱{Number(a.fee_php).toLocaleString()}</>}
                 </li>
               ))}
             </ul>

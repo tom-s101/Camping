@@ -17,7 +17,10 @@ const HEADERS = [
   "Attendee Last Name",
   "Age Range",
   "Gender",
-  "Payment Reference",
+  "Wants Shirt",
+  "Shirt Size",
+  "Attendee Fee (PHP)",
+  "Payment Confirmed",
   "Payment Status",
   "Total Amount (PHP)",
 ];
@@ -75,7 +78,10 @@ function toRow(registration: Registration, attendee: Registration["attendees"][n
     attendee.last_name,
     attendee.age_range,
     attendee.gender,
-    registration.payment_reference,
+    attendee.wants_shirt ? "Yes" : "No",
+    attendee.shirt_size ?? "",
+    attendee.fee_php ?? "",
+    registration.confirmed_payment ? "Yes" : "No",
     registration.payment_status,
     registration.total_amount_php,
   ];
@@ -128,7 +134,19 @@ export function exportRegistrationsToCsv(registrations: Registration[]) {
         const attendees =
           registration.attendees.length > 0
             ? registration.attendees
-            : [{ id: "", camp_number: 0, first_name: "", last_name: "", age_range: "", gender: "" }];
+            : [
+                {
+                  id: "",
+                  camp_number: 0,
+                  first_name: "",
+                  last_name: "",
+                  age_range: "",
+                  gender: "",
+                  wants_shirt: false,
+                  shirt_size: null,
+                  fee_php: null,
+                },
+              ];
         for (const attendee of attendees) {
           rows.push(toRow(registration, attendee));
         }

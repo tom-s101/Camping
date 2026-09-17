@@ -12,11 +12,13 @@ export default function StatsTab({ stats }: { stats: Stats | null }) {
         <StatTile label="Paid Amount" value={`₱${stats.paidAmountPhp.toLocaleString()}`} />
         <StatTile label="Pending Groups" value={stats.pendingGroups} />
         <StatTile label="Rejected Groups" value={stats.rejectedGroups} />
+        <StatTile label="Shirts Requested" value={stats.shirtsRequested} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Breakdown title="By Gender" data={stats.byGender} />
         <Breakdown title="By Age Range" data={stats.byAgeRange} />
+        <Breakdown title="By Shirt Size" data={stats.byShirtSize} />
       </div>
     </div>
   );

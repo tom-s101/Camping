@@ -38,10 +38,19 @@ church. Edit `src/lib/districts.ts` to correct any of these.
      sequential Camp ID (Camp-001, Camp-002, ...) at insert time, and updates
      the allowed age brackets to single-year granularity (13-27) for the
      youth camp.
+   - `0004_pricing_shirts_agreements.sql` adds the camp-shirt add-on
+     (size + per-attendee fee), the guidelines/refund/minor-waiver/payment
+     agreement checkboxes, a `compute_attendee_fee()` function that prices
+     each attendee off the **database server's clock** (early bird / regular /
+     standard tiers — see `src/lib/pricing.ts`), and revokes the public
+     `anon` role's ability to call `submit_registration()` directly, since
+     registration now always goes through the `/api/register` server route
+     (needed so it can also trigger the Brevo confirmation email).
 
 3. **Copy `.env.example` to `.env.local`** and fill in:
-   - `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY`
-     from Project Settings → API in Supabase.
+   - `NEXT_PUBLIC_SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` from Project
+     Settings → API in Supabase. (There's no anon key in use — the site only
+     talks to Supabase from the server.)
    - `ADMIN_USERNAME` / `ADMIN_PASSWORD` — the dashboard login. Defaults to
      `Admin` / `area2camp` if unset; **change these before the site goes live.**
    - `SESSION_SECRET` — any long random string, used to sign the admin session
@@ -49,6 +58,8 @@ church. Edit `src/lib/districts.ts` to correct any of these.
    - `NEXT_PUBLIC_SITE_URL` — the site's real deployed URL. **Set this once you
      know the final domain**, or shared-link previews (Facebook, Messenger,
      iMessage, etc.) won't show the banner image correctly.
+   - `BREVO_API_KEY` / `BREVO_SENDER_EMAIL` / `BREVO_SENDER_NAME` — for the
+     automated registration confirmation email. See **Email (Brevo)** below.
 
 4. **Run it**
 
@@ -61,23 +72,80 @@ church. Edit `src/lib/districts.ts` to correct any of these.
 
 ## How registration submission works
 
-The registration page collects everything (contact info, each attendee, a
-transaction reference number, and a proof-of-payment file for the payment made
-to the attendee's AY leader) and submits it as a single action:
+Payment is coordinated entirely offline through each attendee's District
+President, not through the site — there's nothing to upload. The registration
+page collects contact info, each attendee (including an optional camp-shirt
+add-on and size), the required agreement checkboxes (camp guidelines,
+cancellation/transfer policy, a payment-confirmation checkbox, and a
+parental/guardian waiver acknowledgement if the group includes a minor), and
+submits it all as a single action:
 
-1. The proof file is uploaded to Supabase Storage first (required to get a path
-   for the database row).
-2. One Postgres RPC call (`submit_registration`) then inserts the registration
-   and every attendee in a single transaction — so a partial failure rolls back
-   completely instead of leaving orphaned rows.
-3. A client-generated idempotency key is sent with both calls, tied to a unique
-   constraint in the database. Retrying after a timeout re-uses the same file
-   path and returns the original registration instead of creating a duplicate.
+1. The browser posts the form to `/api/register` (never directly to
+   Supabase) — this is what lets the server also fire the confirmation email
+   and re-validate everything the client already checked.
+2. That route calls the `submit_registration()` Postgres function with the
+   Supabase **service role** key. The function computes each attendee's fee
+   itself from `now()` (the database server's clock, not the registrant's
+   device) via `compute_attendee_fee()`, inserts the registration and every
+   attendee in one transaction, and re-checks the required agreement flags
+   server-side.
+3. A client-generated idempotency key is sent with the request, tied to a
+   unique constraint in the database. Retrying after a timeout returns the
+   original registration instead of creating a duplicate.
+4. On success, the route fires a Brevo transactional email to the
+   registrant (best-effort — a failed email never fails the registration
+   itself).
+
+### Pricing tiers
+
+Tier cutoffs and prices live in `src/lib/pricing.ts` (client-side estimate
+only) and are mirrored in `compute_attendee_fee()` in
+`supabase/migrations/0004_pricing_shirts_agreements.sql` (the authoritative
+calculation). **Edit both places** if the dates or prices change. The camp
+shirt add-on closes automatically once the Regular-rate cutoff passes.
+
+### Parental/guardian waiver
+
+A minor is detected automatically from an attendee's age range (`0-12`, or a
+single-year value under 18). The downloadable waiver PDF lives at
+`public/downloads/sanctuary-camp-2026-parental-waiver.pdf`, linked from the
+registration page, the site header nav, and the mobile menu.
+
+## Email (Brevo)
+
+Registration confirmation emails go through
+[Brevo](https://www.brevo.com)'s transactional email API
+(`src/lib/brevo.ts`). Setup is entirely on Brevo's dashboard — there's no CLI
+or SQL involved:
+
+1. Create a Brevo account (or use an existing one) and verify a sender email
+   or domain under **Senders, Domains & Dedicated IPs**.
+2. Generate an API key under **SMTP & API → API Keys**.
+3. Set `BREVO_API_KEY`, `BREVO_SENDER_EMAIL` (must match a verified sender),
+   and `BREVO_SENDER_NAME` in your environment (`.env.local` locally, or your
+   host's environment variables in production).
+4. If `BREVO_API_KEY` is unset, `/api/register` still works — it just skips
+   sending the email (logging a warning) instead of failing the registration.
+
+To confirm your API key works without submitting a real registration, run:
+
+```bash
+curl -s -X POST https://api.brevo.com/v3/smtp/email \
+  -H "api-key: $BREVO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"sender":{"email":"'"$BREVO_SENDER_EMAIL"'","name":"Sanctuary Camp 2026"},"to":[{"email":"you@example.com"}],"subject":"Brevo test","htmlContent":"<p>It works.</p>"}'
+```
+
+A `messageId` in the response means it sent; anything else (401/400) means
+the key or sender isn't set up correctly yet.
 
 ## Known limitations
 
-- Upload guardrails check file size (2MB), MIME type, and magic-byte signature
-  client-side, and the Supabase Storage bucket itself enforces size/type limits
-  server-side regardless of the client. There's no virus-scanning pipeline —
-  add one (e.g. a storage webhook to an AV API) if that's needed.
-- The admin login is a single shared username/password, not per-admin accounts.
+- The admin login is a single shared username/password, not per-admin
+  accounts.
+- `/api/register` validates its input server-side but has no rate limiting;
+  add one (e.g. at the CDN/edge layer) if abuse becomes a concern.
+- Registrations submitted before this update may still have a
+  `payment_reference` / `payment_proof_path` on file (from the old
+  upload-a-screenshot flow) — the dashboard still displays those for
+  historical rows, but new registrations no longer collect either.

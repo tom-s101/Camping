@@ -54,7 +54,7 @@ export default function HomePage() {
         <div className="grid grid-cols-1 gap-6 rounded-xl bg-white p-6 shadow-lg sm:grid-cols-3 sm:p-8">
           <InfoItem label="When" value={EVENT.dateLabel} />
           <InfoItem label="Where" value={`${EVENT.locationName}, ${EVENT.locationDetail}`} />
-          <InfoItem label="Fee" value={`₱${EVENT.feePhp} per person`} />
+          <InfoItem label="Fee" value="₱500–₱850 (see registration for rates)" />
         </div>
       </div>
 

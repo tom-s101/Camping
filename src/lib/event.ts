@@ -11,7 +11,6 @@ export const EVENT = {
   openTo: "To all who is willing",
   locationName: "Adventist University of the Philippines",
   locationDetail: "Puting Kahoy, Silang, Cavite",
-  feePhp: 700,
 } as const;
 
 export const AGE_RANGES = [
@@ -34,9 +33,3 @@ export const AGE_RANGES = [
   "28-35",
   "36+",
 ] as const;
-
-export const UPLOAD = {
-  maxBytes: 2 * 1024 * 1024,
-  acceptedMimeTypes: ["image/jpeg", "image/png", "image/webp", "application/pdf"],
-  acceptedExtensions: [".jpg", ".jpeg", ".png", ".webp", ".pdf"],
-} as const;

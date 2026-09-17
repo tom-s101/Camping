@@ -22,8 +22,14 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query;
     if (error) throw error;
 
+    // Only pre-2026-migration registrations still have a payment_proof_path
+    // (uploads were replaced by a payment-confirmation checkbox); skip the
+    // storage call entirely for everything else.
     const withSignedUrls = await Promise.all(
       (data ?? []).map(async (registration) => {
+        if (!registration.payment_proof_path) {
+          return { ...registration, payment_proof_url: null };
+        }
         const { data: signed } = await supabaseAdmin.storage
           .from("payment-proofs")
           .createSignedUrl(registration.payment_proof_path, 60 * 60);

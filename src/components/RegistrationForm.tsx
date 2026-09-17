@@ -1,11 +1,30 @@
 "use client";
 
+import Image from "next/image";
 import { cloneElement, useId, useMemo, useState } from "react";
-import { AGE_RANGES, EVENT, UPLOAD } from "@/lib/event";
+import { AGE_RANGES } from "@/lib/event";
 import { formatCampId } from "@/lib/campId";
 import { DISTRICTS, SINGLE_PASTORATES, SINGLE_PASTORATE_LABEL, districtLabel } from "@/lib/districts";
-import { supabase } from "@/lib/supabase/client";
-import { extensionForMimeType, validateUploadFile } from "@/lib/validateUpload";
+import {
+  PRICING_TIERS,
+  SHIRT_SIZES,
+  estimateFeePhp,
+  isShirtAvailable,
+  localDateISO,
+  type ShirtSize,
+} from "@/lib/pricing";
+import {
+  CAMP_RULES,
+  CANCELLATION_POLICY,
+  GUIDELINES_AGREEMENT_TEXT,
+  MINOR_DISCIPLINE_NOTICE,
+  PAYMENT_CONFIRMATION_TEXT,
+  PAYMENT_PROCESS,
+  PAYMENT_PROCESS_DETAILS,
+  REFUND_AGREEMENT_TEXT,
+  REGISTRATION_CONFIRMATION_DISCLAIMER,
+  isMinorAgeRange,
+} from "@/lib/campContent";
 import SubmitLoadingOverlay from "@/components/SubmitLoadingOverlay";
 import LiquidMetalButton from "@/components/LiquidMetalButton";
 
@@ -16,17 +35,28 @@ type Attendee = {
   lastName: string;
   ageRange: (typeof AGE_RANGES)[number] | "";
   gender: "male" | "female" | "";
+  wantsShirt: boolean;
+  shirtSize: ShirtSize | "";
 };
 
-const emptyAttendee: Attendee = { firstName: "", lastName: "", ageRange: "", gender: "" };
+const emptyAttendee: Attendee = {
+  firstName: "",
+  lastName: "",
+  ageRange: "",
+  gender: "",
+  wantsShirt: false,
+  shirtSize: "",
+};
 
 const inputClass =
   "mt-1 block w-full rounded-md border border-navy-900/20 bg-white px-3 py-2.5 text-sm text-navy-900 placeholder:text-navy-900/40 focus:border-gold-600 focus:outline-none focus:ring-1 focus:ring-gold-600";
 const labelClass = "text-sm font-semibold text-navy-900";
+const checkboxClass = "mt-0.5 h-4 w-4 shrink-0 accent-gold-600";
 
 export default function RegistrationForm() {
   const [idempotencyKey] = useState(() => crypto.randomUUID());
-  const proofFileInputId = useId();
+  const today = useMemo(() => localDateISO(), []);
+  const shirtAvailable = useMemo(() => isShirtAvailable(today), [today]);
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -60,16 +90,19 @@ export default function RegistrationForm() {
   }, [churchMode, districtCode, districtChurch, pastorateChurch, otherDistrict, otherChurch]);
 
   const [attendees, setAttendees] = useState<Attendee[]>([{ ...emptyAttendee }]);
+  const hasMinor = attendees.some((a) => a.ageRange && isMinorAgeRange(a.ageRange));
+  const estimatedTotal = attendees.reduce((sum, a) => sum + estimateFeePhp(today, a.wantsShirt), 0);
 
-  const [paymentReference, setPaymentReference] = useState("");
-  const [proofFile, setProofFile] = useState<File | null>(null);
-  const [fileError, setFileError] = useState<string | null>(null);
+  const [openedGuidelines, setOpenedGuidelines] = useState(false);
+  const [openedRefundPolicy, setOpenedRefundPolicy] = useState(false);
+  const [agreedGuidelines, setAgreedGuidelines] = useState(false);
+  const [agreedRefundPolicy, setAgreedRefundPolicy] = useState(false);
+  const [agreedMinorWaiver, setAgreedMinorWaiver] = useState(false);
+  const [confirmedPayment, setConfirmedPayment] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<{ campNumbers: number[] } | null>(null);
-
-  const total = attendees.length * EVENT.feePhp;
+  const [result, setResult] = useState<{ campNumbers: number[]; totalAmountPhp: number } | null>(null);
 
   const updateAttendee = (index: number, patch: Partial<Attendee>) => {
     setAttendees((prev) => prev.map((a, i) => (i === index ? { ...a, ...patch } : a)));
@@ -85,8 +118,11 @@ export default function RegistrationForm() {
       return false;
     }
     if (emailFormatError || emailMatchError) return false;
-    if (!paymentReference || !proofFile) return false;
-    return attendees.every((a) => a.firstName && a.lastName && a.ageRange && a.gender);
+    if (!agreedGuidelines || !agreedRefundPolicy || !confirmedPayment) return false;
+    if (hasMinor && !agreedMinorWaiver) return false;
+    return attendees.every(
+      (a) => a.firstName && a.lastName && a.ageRange && a.gender && (!a.wantsShirt || a.shirtSize)
+    );
   }, [
     submitting,
     firstName,
@@ -99,31 +135,18 @@ export default function RegistrationForm() {
     district,
     churchName,
     city,
-    paymentReference,
-    proofFile,
+    agreedGuidelines,
+    agreedRefundPolicy,
+    confirmedPayment,
+    hasMinor,
+    agreedMinorWaiver,
     attendees,
   ]);
-
-  async function handleFileChange(file: File | null) {
-    setProofFile(null);
-    setFileError(null);
-    if (!file) return;
-    const reason = await validateUploadFile(file);
-    if (reason) {
-      setFileError(reason);
-      return;
-    }
-    setProofFile(file);
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
-    if (!proofFile) {
-      setError("Please upload your proof of payment.");
-      return;
-    }
     if (emailFormatError || emailMatchError) {
       setError(emailFormatError ?? emailMatchError);
       return;
@@ -131,36 +154,38 @@ export default function RegistrationForm() {
 
     setSubmitting(true);
     try {
-      const path = `${idempotencyKey}/proof.${extensionForMimeType(proofFile.type)}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("payment-proofs")
-        .upload(path, proofFile, { contentType: proofFile.type, upsert: true });
-      if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
-
-      const { data, error: rpcError } = await supabase.rpc("submit_registration", {
-        p_idempotency_key: idempotencyKey,
-        p_contact_first_name: firstName,
-        p_contact_last_name: lastName,
-        p_contact_email: email,
-        p_contact_phone: phone,
-        p_district: district,
-        p_church_name: churchName,
-        p_city: city,
-        p_payment_reference: paymentReference,
-        p_payment_proof_path: path,
-        p_attendees: attendees.map((a) => ({
-          first_name: a.firstName,
-          last_name: a.lastName,
-          age_range: a.ageRange,
-          gender: a.gender,
-        })),
-        p_fee_php: EVENT.feePhp,
+      const res = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          idempotencyKey,
+          firstName,
+          lastName,
+          email,
+          phone,
+          district,
+          churchName,
+          city,
+          agreedGuidelines,
+          agreedRefundPolicy,
+          agreedMinorWaiver: hasMinor ? agreedMinorWaiver : false,
+          confirmedPayment,
+          attendees: attendees.map((a) => ({
+            first_name: a.firstName,
+            last_name: a.lastName,
+            age_range: a.ageRange,
+            gender: a.gender,
+            wants_shirt: a.wantsShirt,
+            shirt_size: a.wantsShirt ? a.shirtSize : null,
+          })),
+        }),
       });
-      if (rpcError) throw new Error(rpcError.message);
 
-      const campNumbers = (data as { registration_id: string; camp_numbers: number[] }).camp_numbers ?? [];
-      setResult({ campNumbers });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(body?.error ?? "Something went wrong. Please try again.");
+
+      const data = body.data as { camp_numbers: number[]; total_amount_php: number };
+      setResult({ campNumbers: data.camp_numbers ?? [], totalAmountPhp: Number(data.total_amount_php ?? 0) });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {
@@ -175,13 +200,17 @@ export default function RegistrationForm() {
         <h2 className="text-2xl font-bold text-navy-900">You&apos;re registered!</h2>
         <p className="mt-3 text-navy-900/70">
           We received your registration for {groupSize} {groupSize === 1 ? "person" : "people"}. Our team
-          will review your payment and confirm it within a few days.
+          will review your information and payment and confirm your slot within a few days. A confirmation
+          email is on its way to {email}.
         </p>
         <p className="mt-4 text-sm font-semibold text-navy-900">
           {groupSize === 1 ? "Your Camp ID:" : "Your Camp IDs:"}
         </p>
         <p className="mt-1 text-lg font-bold tracking-wide text-gold-700">
           {result.campNumbers.map(formatCampId).join(", ")}
+        </p>
+        <p className="mt-4 text-sm text-navy-900/70">
+          Total due: <span className="font-bold text-navy-900">₱{result.totalAmountPhp.toLocaleString()}</span>
         </p>
       </div>
     );
@@ -352,6 +381,47 @@ export default function RegistrationForm() {
         </div>
       </Card>
 
+      <Card title="Pricing & Camp Shirt">
+        <p className="text-sm text-navy-900/70">Pricing depends on when you register:</p>
+        <div className="mt-3 overflow-hidden rounded-lg border border-navy-900/10">
+          <table className="w-full text-left text-sm">
+            <tbody>
+              {PRICING_TIERS.map((tier) => (
+                <tr key={tier.label} className="border-b border-navy-900/10 last:border-0">
+                  <td className="px-3 py-2 font-semibold text-navy-900">{tier.label}</td>
+                  <td className="hidden px-3 py-2 text-xs text-navy-900/60 sm:table-cell">{tier.note}</td>
+                  <td className="px-3 py-2 text-right font-bold text-gold-700">₱{tier.price}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-2 text-xs text-navy-900/50">
+          Your final price is confirmed by our system when you submit, based on that date — not your
+          device&apos;s clock.
+        </p>
+
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <Image
+            src="/images/camp-shirt-front.jpg"
+            alt="Camp shirt front design"
+            width={500}
+            height={500}
+            className="w-full rounded-lg border border-navy-900/10 object-cover"
+          />
+          <Image
+            src="/images/camp-shirt-back.jpg"
+            alt="Camp shirt back design"
+            width={500}
+            height={500}
+            className="w-full rounded-lg border border-navy-900/10 object-cover"
+          />
+        </div>
+        <p className="mt-2 text-xs text-navy-900/50">
+          Sizes available: {SHIRT_SIZES.join(", ")}. You can add a shirt for each attendee below.
+        </p>
+      </Card>
+
       <Card title={`Who's Attending? (${attendees.length})`}>
         <div className="space-y-4">
           {attendees.map((attendee, index) => (
@@ -421,6 +491,55 @@ export default function RegistrationForm() {
                   </select>
                 </Field>
               </div>
+
+              <div className="mt-4 rounded-md bg-cream p-3">
+                {shirtAvailable ? (
+                  <>
+                    <label className="flex items-center gap-2 text-sm font-semibold text-navy-900">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 accent-gold-600"
+                        checked={attendee.wantsShirt}
+                        onChange={(e) =>
+                          updateAttendee(index, {
+                            wantsShirt: e.target.checked,
+                            shirtSize: e.target.checked ? attendee.shirtSize : "",
+                          })
+                        }
+                      />
+                      Add a camp shirt for this person
+                    </label>
+                    {attendee.wantsShirt && (
+                      <div className="mt-3">
+                        <Field label="Shirt Size">
+                          <select
+                            className={inputClass}
+                            value={attendee.shirtSize}
+                            onChange={(e) => updateAttendee(index, { shirtSize: e.target.value as ShirtSize })}
+                            required
+                          >
+                            <option value="" disabled>
+                              Select size
+                            </option>
+                            {SHIRT_SIZES.map((size) => (
+                              <option key={size} value={size}>
+                                {size}
+                              </option>
+                            ))}
+                          </select>
+                        </Field>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-xs text-navy-900/50">
+                    The camp shirt add-on is no longer available for new registrations.
+                  </p>
+                )}
+                <p className="mt-2 text-xs font-semibold text-gold-700">
+                  Estimated fee for this person: ₱{estimateFeePhp(today, attendee.wantsShirt).toLocaleString()}
+                </p>
+              </div>
             </div>
           ))}
         </div>
@@ -433,56 +552,113 @@ export default function RegistrationForm() {
         </button>
       </Card>
 
+      <Card title="Camp Rules & Guidelines">
+        <ExpandableAgreement
+          summary="View the full Camp Rules and Guidelines"
+          hasOpened={openedGuidelines}
+          onOpen={() => setOpenedGuidelines(true)}
+          checked={agreedGuidelines}
+          onChange={setAgreedGuidelines}
+          agreementText={GUIDELINES_AGREEMENT_TEXT}
+        >
+          <ol className="list-decimal space-y-2 pl-5">
+            {CAMP_RULES.map((rule, i) => (
+              <li key={i}>{rule}</li>
+            ))}
+          </ol>
+        </ExpandableAgreement>
+      </Card>
+
+      <Card title="Cancellation & Transfer Policy">
+        <ExpandableAgreement
+          summary="View the Cancellation and Transfer Policy"
+          hasOpened={openedRefundPolicy}
+          onOpen={() => setOpenedRefundPolicy(true)}
+          checked={agreedRefundPolicy}
+          onChange={setAgreedRefundPolicy}
+          agreementText={REFUND_AGREEMENT_TEXT}
+        >
+          <div className="space-y-2">
+            {CANCELLATION_POLICY.map((p, i) => (
+              <p key={i}>{p}</p>
+            ))}
+          </div>
+        </ExpandableAgreement>
+      </Card>
+
+      {hasMinor && (
+        <Card title="Parental / Guardian Waiver Required">
+          <p className="text-sm text-navy-900/80">
+            Your group includes at least one minor (under 18). Their parent or legal guardian must sign a
+            waiver form for them to attend. Bring the signed, physical copy to camp check-in — it is not
+            uploaded here.
+          </p>
+          <a
+            href="/downloads/sanctuary-camp-2026-parental-waiver.pdf"
+            download
+            className="mt-3 inline-block text-sm font-semibold text-gold-700 underline underline-offset-2"
+          >
+            Download the Parental/Guardian Waiver Form (PDF)
+          </a>
+          <label className="mt-4 flex items-start gap-2.5 text-sm text-navy-900">
+            <input
+              type="checkbox"
+              className={checkboxClass}
+              checked={agreedMinorWaiver}
+              onChange={(e) => setAgreedMinorWaiver(e.target.checked)}
+            />
+            <span>
+              I will bring a signed parental/guardian waiver form for the minor(s) in my group. {MINOR_DISCIPLINE_NOTICE}
+            </span>
+          </label>
+        </Card>
+      )}
+
       <Card title="Payment">
         <p className="text-sm text-navy-900/70">
-          Total due for {attendees.length} {attendees.length === 1 ? "person" : "people"} at ₱{EVENT.feePhp} each:
+          Estimated total due for {attendees.length} {attendees.length === 1 ? "person" : "people"}:
         </p>
-        <p className="mt-1 text-3xl font-extrabold text-navy-900">₱{total.toLocaleString()}</p>
+        <p className="mt-1 text-3xl font-extrabold text-navy-900">₱{estimatedTotal.toLocaleString()}</p>
 
         <div className="mt-5 rounded-lg bg-cream p-4 text-sm text-navy-900/80">
-          <p className="font-semibold text-navy-900">Upload your proof of payment to your AY leader.</p>
+          <p className="font-semibold text-navy-900">Registration Payment Confirmation</p>
           <p className="mt-1">
-            Pay your AY leader in person, then upload a picture of your proof of payment below along with the
-            transaction number.
+            Before completing this form, please coordinate your payment with your respective AY
+            Leader/District Representative.
           </p>
+          <ul className="mt-3 list-disc space-y-1.5 pl-5">
+            {PAYMENT_PROCESS.map((p, i) => (
+              <li key={i}>{p}</li>
+            ))}
+          </ul>
+          <details className="mt-3">
+            <summary className="cursor-pointer text-xs font-semibold text-gold-700">
+              More about the payment process
+            </summary>
+            <ul className="mt-2 list-disc space-y-1.5 pl-5 text-xs">
+              {PAYMENT_PROCESS_DETAILS.map((p, i) => (
+                <li key={i}>{p}</li>
+              ))}
+            </ul>
+          </details>
         </div>
 
-        <div className="mt-5">
-          <Field label="Reference / Transaction Number">
-            <input
-              className={inputClass}
-              value={paymentReference}
-              onChange={(e) => setPaymentReference(e.target.value)}
-              required
-            />
-          </Field>
-        </div>
-
-        <div className="mt-4">
-          <label htmlFor={proofFileInputId} className={labelClass}>
-            Proof of Payment (picture given to your AY leader)
-          </label>
+        <label className="mt-4 flex items-start gap-2.5 text-sm text-navy-900">
           <input
-            id={proofFileInputId}
-            type="file"
-            accept={UPLOAD.acceptedMimeTypes.join(",")}
-            onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
-            className="mt-1 block w-full text-sm text-navy-900/70 file:mr-4 file:rounded-md file:border-0 file:bg-navy-900 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
-            required
+            type="checkbox"
+            className={checkboxClass}
+            checked={confirmedPayment}
+            onChange={(e) => setConfirmedPayment(e.target.checked)}
           />
-          <p className="mt-1 text-xs text-navy-900/50">JPG, PNG, WEBP, or PDF. Max size 2MB.</p>
-          {proofFile && !fileError && (
-            <p className="mt-1 text-xs text-gold-700">
-              Selected: {proofFile.name} ({(proofFile.size / 1024 / 1024).toFixed(2)}MB)
-            </p>
-          )}
-          {fileError && <p className="mt-1 text-xs text-red-600">{fileError}</p>}
-        </div>
+          <span>{PAYMENT_CONFIRMATION_TEXT}</span>
+        </label>
       </Card>
 
       {error && (
         <div className="rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
       )}
+
+      <p className="text-xs leading-relaxed text-navy-900/60">{REGISTRATION_CONFIRMATION_DISCLAIMER}</p>
 
       <LiquidMetalButton
         type="submit"
@@ -494,6 +670,54 @@ export default function RegistrationForm() {
       </LiquidMetalButton>
       </form>
     </>
+  );
+}
+
+function ExpandableAgreement({
+  summary,
+  children,
+  hasOpened,
+  onOpen,
+  checked,
+  onChange,
+  agreementText,
+}: {
+  summary: string;
+  children: React.ReactNode;
+  hasOpened: boolean;
+  onOpen: () => void;
+  checked: boolean;
+  onChange: (value: boolean) => void;
+  agreementText: string;
+}) {
+  return (
+    <div>
+      <details
+        onToggle={(e) => {
+          if ((e.target as HTMLDetailsElement).open) onOpen();
+        }}
+      >
+        <summary className="cursor-pointer text-sm font-semibold text-gold-700">{summary}</summary>
+        <div className="mt-3 max-h-64 overflow-y-auto pr-2 text-sm leading-relaxed text-navy-900/80">
+          {children}
+        </div>
+      </details>
+      <label
+        className={`mt-4 flex items-start gap-2.5 text-sm ${hasOpened ? "text-navy-900" : "text-navy-900/40"}`}
+      >
+        <input
+          type="checkbox"
+          className={checkboxClass}
+          checked={checked}
+          disabled={!hasOpened}
+          onChange={(e) => onChange(e.target.checked)}
+        />
+        <span>{agreementText}</span>
+      </label>
+      {!hasOpened && (
+        <p className="mt-1 text-xs text-navy-900/40">Please expand and read the section above first.</p>
+      )}
+    </div>
   );
 }
 
@@ -539,4 +763,3 @@ function ModeButton({
     </button>
   );
 }
-
