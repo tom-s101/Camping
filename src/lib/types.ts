@@ -27,7 +27,8 @@ export type Registration = {
   payment_status: "pending" | "approved" | "rejected";
   agreed_guidelines: boolean;
   agreed_refund_policy: boolean;
-  agreed_minor_waiver: boolean;
+  waiver_form_path: string | null;
+  waiver_form_url: string | null;
   confirmed_payment: boolean;
   has_minor: boolean;
   reviewed_at: string | null;

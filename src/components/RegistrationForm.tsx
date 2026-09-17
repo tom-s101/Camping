@@ -32,6 +32,7 @@ import {
 import SubmitLoadingOverlay from "@/components/SubmitLoadingOverlay";
 import LiquidMetalButton from "@/components/LiquidMetalButton";
 import Modal from "@/components/Modal";
+import { WAIVER_UPLOAD, validateUploadFile } from "@/lib/validateUpload";
 
 type ChurchMode = "district" | "single_pastorate" | "other";
 
@@ -60,6 +61,7 @@ const checkboxClass = "mt-0.5 h-4 w-4 shrink-0 accent-gold-600";
 
 export default function RegistrationForm() {
   const [idempotencyKey] = useState(() => crypto.randomUUID());
+  const waiverFileInputId = useId();
   const today = useMemo(() => localDateISO(), []);
   const activeShirtOptions = useMemo(() => getActiveShirtOptions(today), [today]);
   const singleShirtOption = activeShirtOptions.length === 1 ? activeShirtOptions[0] : null;
@@ -117,7 +119,8 @@ export default function RegistrationForm() {
   const [openedRefundPolicy, setOpenedRefundPolicy] = useState(false);
   const [agreedGuidelines, setAgreedGuidelines] = useState(false);
   const [agreedRefundPolicy, setAgreedRefundPolicy] = useState(false);
-  const [agreedMinorWaiver, setAgreedMinorWaiver] = useState(false);
+  const [waiverFile, setWaiverFile] = useState<File | null>(null);
+  const [waiverFileError, setWaiverFileError] = useState<string | null>(null);
   const [confirmedPayment, setConfirmedPayment] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
@@ -182,8 +185,21 @@ export default function RegistrationForm() {
 
   function minorWaiverError(): string | null {
     if (!hasMinor) return null;
-    if (!agreedMinorWaiver) return "Please check the box confirming you'll bring a signed parental/guardian waiver.";
+    if (waiverFileError) return waiverFileError;
+    if (!waiverFile) return "Please upload the signed parental/guardian waiver form for the minor(s) in your group.";
     return null;
+  }
+
+  async function handleWaiverFileChange(file: File | null) {
+    setWaiverFile(null);
+    setWaiverFileError(null);
+    if (!file) return;
+    const reason = await validateUploadFile(file);
+    if (reason) {
+      setWaiverFileError(reason);
+      return;
+    }
+    setWaiverFile(file);
   }
 
   function paymentError(): string | null {
@@ -229,6 +245,17 @@ export default function RegistrationForm() {
 
     setSubmitting(true);
     try {
+      let waiverFormPath: string | null = null;
+      if (hasMinor && waiverFile) {
+        const uploadBody = new FormData();
+        uploadBody.set("file", waiverFile);
+        uploadBody.set("idempotencyKey", idempotencyKey);
+        const uploadRes = await fetch("/api/upload-waiver", { method: "POST", body: uploadBody });
+        const uploadResult = await uploadRes.json().catch(() => null);
+        if (!uploadRes.ok) throw new Error(uploadResult?.error ?? "Waiver upload failed. Please try again.");
+        waiverFormPath = uploadResult.path as string;
+      }
+
       const res = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -243,7 +270,7 @@ export default function RegistrationForm() {
           city,
           agreedGuidelines,
           agreedRefundPolicy,
-          agreedMinorWaiver: hasMinor ? agreedMinorWaiver : false,
+          waiverFormPath,
           confirmedPayment,
           attendees: attendees.map((a) => {
             const choice = effectiveShirtChoice(a) || "without";
@@ -704,28 +731,31 @@ export default function RegistrationForm() {
           errorMessage={minorWaiverError()}
         >
           <p className="text-sm text-navy-900/80">
-            Your group includes at least one minor (under 18). Their parent or legal guardian must sign a
-            waiver form for them to attend. Bring the signed, physical copy to camp check-in — it is not
-            uploaded here.
+            Your group includes at least one minor (under 18). Their parent or legal guardian must fill out
+            and sign the physical waiver form given by your church/district, then upload a clear photo or
+            scan of it here.
           </p>
-          <a
-            href="/downloads/sanctuary-camp-2026-parental-waiver.pdf"
-            download
-            className="mt-3 inline-block text-sm font-semibold text-gold-700 underline underline-offset-2"
-          >
-            Download the Parental/Guardian Waiver Form (PDF)
-          </a>
-          <label className="mt-4 flex items-start gap-2.5 text-sm text-navy-900">
+          <p className="mt-2 text-xs text-navy-900/60">{MINOR_DISCIPLINE_NOTICE}</p>
+
+          <div className="mt-4">
+            <label htmlFor={waiverFileInputId} className={labelClass}>
+              Signed Waiver Form
+            </label>
             <input
-              type="checkbox"
-              className={checkboxClass}
-              checked={agreedMinorWaiver}
-              onChange={(e) => setAgreedMinorWaiver(e.target.checked)}
+              id={waiverFileInputId}
+              type="file"
+              accept={WAIVER_UPLOAD.acceptedMimeTypes.join(",")}
+              onChange={(e) => handleWaiverFileChange(e.target.files?.[0] ?? null)}
+              className="mt-1 block w-full text-sm text-navy-900/70 file:mr-4 file:rounded-md file:border-0 file:bg-navy-900 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
             />
-            <span>
-              I will bring a signed parental/guardian waiver form for the minor(s) in my group. {MINOR_DISCIPLINE_NOTICE}
-            </span>
-          </label>
+            <p className="mt-1 text-xs text-navy-900/50">JPG, PNG, WEBP, or PDF. Max size 2MB.</p>
+            {waiverFile && !waiverFileError && (
+              <p className="mt-1 text-xs text-gold-700">
+                Selected: {waiverFile.name} ({(waiverFile.size / 1024 / 1024).toFixed(2)}MB)
+              </p>
+            )}
+            {waiverFileError && <p className="mt-1 text-xs text-red-600">{waiverFileError}</p>}
+          </div>
         </Card>
       )}
 

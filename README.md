@@ -39,13 +39,19 @@ church. Edit `src/lib/districts.ts` to correct any of these.
      the allowed age brackets to single-year granularity (13-27) for the
      youth camp.
    - `0004_pricing_shirts_agreements.sql` adds the camp-shirt add-on
-     (size + per-attendee fee), the guidelines/refund/minor-waiver/payment
-     agreement checkboxes, a `compute_attendee_fee()` function that prices
-     each attendee off the **database server's clock** (early bird / regular /
+     (size + per-attendee fee), the guidelines/refund/payment agreement
+     checkboxes, a `compute_attendee_fee()` function that prices each
+     attendee off the **database server's clock** (early bird / regular /
      standard tiers — see `src/lib/pricing.ts`), and revokes the public
      `anon` role's ability to call `submit_registration()` directly, since
      registration now always goes through the `/api/register` server route
      (needed so it can also trigger the Brevo confirmation email).
+   - `0005_waiver_upload.sql` replaces the old "I'll bring a signed waiver"
+     checkbox with an actual upload: adds `waiver_form_path` to
+     `registrations`, drops the now-unused `agreed_minor_waiver` column, and
+     creates a private `waiver-forms` storage bucket (2MB limit, image/PDF
+     only, enforced by Supabase itself). `submit_registration()` now requires
+     that path whenever any attendee is a minor.
 
 3. **Copy `.env.example` to `.env.local`** and fill in:
    - `NEXT_PUBLIC_SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` from Project
@@ -73,26 +79,31 @@ church. Edit `src/lib/districts.ts` to correct any of these.
 ## How registration submission works
 
 Payment is coordinated entirely offline through each attendee's District
-President, not through the site — there's nothing to upload. The registration
-page collects contact info, each attendee (including an optional camp-shirt
-add-on and size), the required agreement checkboxes (camp guidelines,
-cancellation/transfer policy, a payment-confirmation checkbox, and a
-parental/guardian waiver acknowledgement if the group includes a minor), and
-submits it all as a single action:
+President, not through the site — there's nothing to upload for payment. The
+registration page collects contact info, each attendee (including an
+optional camp-shirt add-on and size), the required agreement checkboxes
+(camp guidelines, cancellation/transfer policy, a payment-confirmation
+checkbox), and a scanned/photographed waiver form upload if the group
+includes a minor, then submits it all as a single action:
 
-1. The browser posts the form to `/api/register` (never directly to
-   Supabase) — this is what lets the server also fire the confirmation email
-   and re-validate everything the client already checked.
-2. That route calls the `submit_registration()` Postgres function with the
+1. If the group includes a minor, the browser first uploads the waiver file
+   to `/api/upload-waiver`, which validates it (size, MIME type, and a
+   magic-byte signature check — the same checks the old payment-proof
+   upload used) and stores it in the private `waiver-forms` bucket using the
+   service role key. A failed upload stops here; nothing is submitted.
+2. The browser then posts the rest of the form to `/api/register` (never
+   directly to Supabase) — this is what lets the server also fire the
+   confirmation email and re-validate everything the client already checked.
+3. That route calls the `submit_registration()` Postgres function with the
    Supabase **service role** key. The function computes each attendee's fee
    itself from `now()` (the database server's clock, not the registrant's
    device) via `compute_attendee_fee()`, inserts the registration and every
    attendee in one transaction, and re-checks the required agreement flags
    server-side.
-3. A client-generated idempotency key is sent with the request, tied to a
+4. A client-generated idempotency key is sent with the request, tied to a
    unique constraint in the database. Retrying after a timeout returns the
    original registration instead of creating a duplicate.
-4. On success, the route fires a Brevo transactional email to the
+5. On success, the route fires a Brevo transactional email to the
    registrant (best-effort — a failed email never fails the registration
    itself).
 
@@ -107,9 +118,15 @@ shirt add-on closes automatically once the Regular-rate cutoff passes.
 ### Parental/guardian waiver
 
 A minor is detected automatically from an attendee's age range (`0-12`, or a
-single-year value under 18). The downloadable waiver PDF lives at
-`public/downloads/sanctuary-camp-2026-parental-waiver.pdf`, linked from the
-registration page, the site header nav, and the mobile menu.
+single-year value under 18). Their parent/guardian fills out and signs a
+physical waiver form (distributed by the church/district, not the site), and
+the registrant uploads a photo or scan of it via `/api/upload-waiver`. The
+upload has the same guardrails the old payment-proof upload used: 2MB limit,
+JPG/PNG/WEBP/PDF only, magic-byte signature check client- and server-side,
+and the size/type limits are also enforced by the Supabase Storage bucket
+itself. Admins can view or open the uploaded form from the registration's
+row in `/dashboard`, and a `Minor — No Waiver` badge flags any registration
+with a minor that hasn't uploaded one yet.
 
 ## Email (Brevo)
 

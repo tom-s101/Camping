@@ -77,7 +77,9 @@ export default function RegistrationCard({
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {registration.has_minor && (
-              <span className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700">Minor</span>
+              <span className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700">
+                {registration.waiver_form_url ? "Minor" : "Minor — No Waiver"}
+              </span>
             )}
             {registration.group_size > 1 && (
               <span className="rounded-full bg-gold-600/10 px-2.5 py-1 text-xs font-semibold text-gold-700">
@@ -120,9 +122,33 @@ export default function RegistrationCard({
           </div>
 
           {registration.has_minor && (
-            <p className="mt-3 text-xs font-semibold text-red-700">
-              This group includes a minor. Guardian waiver {registration.agreed_minor_waiver ? "acknowledged" : "NOT acknowledged"} at signup.
-            </p>
+            <div className="mt-3">
+              <p className="text-xs font-semibold uppercase text-navy-900/40">
+                Minor in Group — Parental/Guardian Waiver
+              </p>
+              {registration.waiver_form_url ? (
+                registration.waiver_form_path?.endsWith(".pdf") ? (
+                  <a
+                    href={registration.waiver_form_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1 inline-block text-gold-700 underline"
+                  >
+                    Open waiver form (PDF)
+                  </a>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => onPreviewImage(registration.waiver_form_url!)}
+                    className="mt-1 inline-block text-gold-700 underline"
+                  >
+                    View waiver form
+                  </button>
+                )
+              ) : (
+                <p className="mt-1 font-semibold text-red-700">Not uploaded</p>
+              )}
+            </div>
           )}
 
           <div className="mt-4">

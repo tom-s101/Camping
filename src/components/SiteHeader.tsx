@@ -10,8 +10,6 @@ const NAV_LINKS = [
   { href: "/#faq", label: "FAQ" },
 ];
 
-const WAIVER_HREF = "/downloads/sanctuary-camp-2026-parental-waiver.pdf";
-
 export default function SiteHeader() {
   const [open, setOpen] = useState(false);
 
@@ -28,9 +26,6 @@ export default function SiteHeader() {
               {link.label}
             </a>
           ))}
-          <a href={WAIVER_HREF} download className="text-sm font-medium text-white/90 hover:text-white">
-            Waiver Form
-          </a>
           <LiquidMetalButton href="/register" className="rounded-full" innerClassName="rounded-full px-5 py-2">
             Register Now
           </LiquidMetalButton>
@@ -68,14 +63,6 @@ export default function SiteHeader() {
               {link.label}
             </a>
           ))}
-          <a
-            href={WAIVER_HREF}
-            download
-            onClick={() => setOpen(false)}
-            className="rounded px-2 py-3 text-sm font-medium text-white/90 hover:bg-white/5"
-          >
-            Waiver Form (PDF)
-          </a>
           <LiquidMetalButton
             href="/register"
             onClick={() => setOpen(false)}

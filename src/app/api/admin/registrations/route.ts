@@ -27,13 +27,21 @@ export async function GET(request: NextRequest) {
     // storage call entirely for everything else.
     const withSignedUrls = await Promise.all(
       (data ?? []).map(async (registration) => {
-        if (!registration.payment_proof_path) {
-          return { ...registration, payment_proof_url: null };
-        }
-        const { data: signed } = await supabaseAdmin.storage
-          .from("payment-proofs")
-          .createSignedUrl(registration.payment_proof_path, 60 * 60);
-        return { ...registration, payment_proof_url: signed?.signedUrl ?? null };
+        const [paymentProofUrl, waiverFormUrl] = await Promise.all([
+          registration.payment_proof_path
+            ? supabaseAdmin.storage
+                .from("payment-proofs")
+                .createSignedUrl(registration.payment_proof_path, 60 * 60)
+                .then(({ data: signed }) => signed?.signedUrl ?? null)
+            : null,
+          registration.waiver_form_path
+            ? supabaseAdmin.storage
+                .from("waiver-forms")
+                .createSignedUrl(registration.waiver_form_path, 60 * 60)
+                .then(({ data: signed }) => signed?.signedUrl ?? null)
+            : null,
+        ]);
+        return { ...registration, payment_proof_url: paymentProofUrl, waiver_form_url: waiverFormUrl };
       })
     );
 

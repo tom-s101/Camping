@@ -23,6 +23,8 @@ const HEADERS = [
   "Payment Confirmed",
   "Payment Status",
   "Total Amount (PHP)",
+  "Has Minor",
+  "Waiver Uploaded",
 ];
 
 function escapeCsvField(value: string | number) {
@@ -84,6 +86,8 @@ function toRow(registration: Registration, attendee: Registration["attendees"][n
     registration.confirmed_payment ? "Yes" : "No",
     registration.payment_status,
     registration.total_amount_php,
+    registration.has_minor ? "Yes" : "No",
+    registration.has_minor ? (registration.waiver_form_path ? "Yes" : "No") : "",
   ];
 }
 

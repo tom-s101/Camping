@@ -54,7 +54,9 @@ function validateBody(body: unknown) {
   for (const field of ["agreedGuidelines", "agreedRefundPolicy", "confirmedPayment"]) {
     if (b[field] !== true) return "You must agree to all required terms before submitting.";
   }
-  if (typeof b.agreedMinorWaiver !== "boolean") return "Missing minor waiver acknowledgement.";
+  if (b.waiverFormPath !== null && !isNonEmptyString(b.waiverFormPath, 300)) {
+    return "Missing or invalid waiver form reference.";
+  }
   if (!Array.isArray(b.attendees) || b.attendees.length < 1 || b.attendees.length > MAX_ATTENDEES) {
     return "At least one attendee is required.";
   }
@@ -80,7 +82,7 @@ export async function POST(request: NextRequest) {
     city: string;
     agreedGuidelines: boolean;
     agreedRefundPolicy: boolean;
-    agreedMinorWaiver: boolean;
+    waiverFormPath: string | null;
     confirmedPayment: boolean;
     attendees: AttendeeInput[];
   };
@@ -97,7 +99,7 @@ export async function POST(request: NextRequest) {
       p_city: b.city,
       p_agreed_guidelines: b.agreedGuidelines,
       p_agreed_refund_policy: b.agreedRefundPolicy,
-      p_agreed_minor_waiver: b.agreedMinorWaiver,
+      p_waiver_form_path: b.waiverFormPath,
       p_confirmed_payment: b.confirmedPayment,
       p_attendees: b.attendees.map((a) => ({
         first_name: a.first_name,
