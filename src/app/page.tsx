@@ -1,9 +1,11 @@
 import Image from "next/image";
+import type { ReactNode } from "react";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import FaqAccordion from "@/components/FaqAccordion";
 import SparkleBackground from "@/components/SparkleBackground";
 import LiquidMetalButton from "@/components/LiquidMetalButton";
+import PricingSummary from "@/components/PricingSummary";
 import { ArrowRightIcon, MessageCircleIcon, SparkleIcon } from "@/components/icons";
 import { EVENT } from "@/lib/event";
 
@@ -54,7 +56,7 @@ export default function HomePage() {
         <div className="grid grid-cols-1 gap-6 rounded-xl bg-white p-6 shadow-lg sm:grid-cols-3 sm:p-8">
           <InfoItem label="When" value={EVENT.dateLabel} />
           <InfoItem label="Where" value={`${EVENT.locationName}, ${EVENT.locationDetail}`} />
-          <InfoItem label="Fee" value="₱500–₱850 (see registration for rates)" />
+          <InfoItem label="Fee" value={<PricingSummary />} />
         </div>
       </div>
 
@@ -130,7 +132,7 @@ export default function HomePage() {
   );
 }
 
-function InfoItem({ label, value }: { label: string; value: string }) {
+function InfoItem({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="text-center sm:text-left">
       <p className="text-xs font-semibold uppercase tracking-widest text-gold-600">{label}</p>

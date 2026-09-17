@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { cloneElement, useId, useMemo, useState } from "react";
+import { cloneElement, useId, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { AGE_RANGES } from "@/lib/event";
 import { formatCampId } from "@/lib/campId";
 import { DISTRICTS, SINGLE_PASTORATES, SINGLE_PASTORATE_LABEL, districtLabel } from "@/lib/districts";
@@ -9,8 +9,9 @@ import {
   PRICING_TIERS,
   SHIRT_SIZES,
   estimateFeePhp,
-  isShirtAvailable,
+  getActiveShirtOptions,
   localDateISO,
+  type ShirtChoice,
   type ShirtSize,
 } from "@/lib/pricing";
 import {
@@ -35,7 +36,7 @@ type Attendee = {
   lastName: string;
   ageRange: (typeof AGE_RANGES)[number] | "";
   gender: "male" | "female" | "";
-  wantsShirt: boolean;
+  shirtChoice: ShirtChoice | "";
   shirtSize: ShirtSize | "";
 };
 
@@ -44,7 +45,7 @@ const emptyAttendee: Attendee = {
   lastName: "",
   ageRange: "",
   gender: "",
-  wantsShirt: false,
+  shirtChoice: "",
   shirtSize: "",
 };
 
@@ -56,7 +57,8 @@ const checkboxClass = "mt-0.5 h-4 w-4 shrink-0 accent-gold-600";
 export default function RegistrationForm() {
   const [idempotencyKey] = useState(() => crypto.randomUUID());
   const today = useMemo(() => localDateISO(), []);
-  const shirtAvailable = useMemo(() => isShirtAvailable(today), [today]);
+  const activeShirtOptions = useMemo(() => getActiveShirtOptions(today), [today]);
+  const singleShirtOption = activeShirtOptions.length === 1 ? activeShirtOptions[0] : null;
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -91,7 +93,15 @@ export default function RegistrationForm() {
 
   const [attendees, setAttendees] = useState<Attendee[]>([{ ...emptyAttendee }]);
   const hasMinor = attendees.some((a) => a.ageRange && isMinorAgeRange(a.ageRange));
-  const estimatedTotal = attendees.reduce((sum, a) => sum + estimateFeePhp(today, a.wantsShirt), 0);
+
+  function effectiveShirtChoice(a: Attendee): ShirtChoice | "" {
+    return singleShirtOption ? singleShirtOption.choice : a.shirtChoice;
+  }
+
+  const estimatedTotal = attendees.reduce((sum, a) => {
+    const choice = effectiveShirtChoice(a) || "without";
+    return sum + estimateFeePhp(today, choice === "with");
+  }, 0);
 
   const [openedGuidelines, setOpenedGuidelines] = useState(false);
   const [openedRefundPolicy, setOpenedRefundPolicy] = useState(false);
@@ -103,54 +113,106 @@ export default function RegistrationForm() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ campNumbers: number[]; totalAmountPhp: number } | null>(null);
+  const [invalidKey, setInvalidKey] = useState<string | null>(null);
+
+  const contactRef = useRef<HTMLDivElement>(null);
+  const attendeeRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const guidelinesRef = useRef<HTMLDivElement>(null);
+  const refundRef = useRef<HTMLDivElement>(null);
+  const minorWaiverRef = useRef<HTMLDivElement>(null);
+  const paymentRef = useRef<HTMLDivElement>(null);
 
   const updateAttendee = (index: number, patch: Partial<Attendee>) => {
     setAttendees((prev) => prev.map((a, i) => (i === index ? { ...a, ...patch } : a)));
   };
 
-  const addAttendee = () => setAttendees((prev) => [...prev, { ...emptyAttendee }]);
+  const addAttendee = () => {
+    setAttendees((prev) => [...prev, { ...emptyAttendee }]);
+  };
   const removeAttendee = (index: number) =>
     setAttendees((prev) => prev.filter((_, i) => i !== index));
 
-  const canSubmit = useMemo(() => {
-    if (submitting) return false;
-    if (!firstName || !lastName || !email || !confirmEmail || !phone || !district || !churchName || !city) {
-      return false;
+  function contactError(): string | null {
+    if (!firstName.trim()) return "Please enter your first name.";
+    if (!lastName.trim()) return "Please enter your last name.";
+    if (!email.trim()) return "Please enter your email address.";
+    if (emailFormatError) return emailFormatError;
+    if (!confirmEmail.trim()) return "Please confirm your email address.";
+    if (emailMatchError) return emailMatchError;
+    if (!phone.trim()) return "Please enter your phone number.";
+    if (!district || !churchName) return "Please select your district/pastorate and church.";
+    if (!city.trim()) return "Please enter your city.";
+    return null;
+  }
+
+  function attendeeError(a: Attendee): string | null {
+    if (!a.firstName.trim()) return "Please enter this person's first name.";
+    if (!a.lastName.trim()) return "Please enter this person's last name.";
+    if (!a.ageRange) return "Please select this person's age.";
+    if (!a.gender) return "Please select this person's gender.";
+    const choice = effectiveShirtChoice(a);
+    if (!choice) return "Please choose with or without a camp shirt for this person.";
+    if (choice === "with" && !a.shirtSize) return "Please select a shirt size for this person.";
+    return null;
+  }
+
+  function guidelinesError(): string | null {
+    if (!openedGuidelines) return "Please expand and read the Camp Rules & Guidelines, then check the box to agree.";
+    if (!agreedGuidelines) return "Please check the box to agree to the Camp Rules & Guidelines.";
+    return null;
+  }
+
+  function refundError(): string | null {
+    if (!openedRefundPolicy) {
+      return "Please expand and read the Cancellation & Transfer Policy, then check the box to agree.";
     }
-    if (emailFormatError || emailMatchError) return false;
-    if (!agreedGuidelines || !agreedRefundPolicy || !confirmedPayment) return false;
-    if (hasMinor && !agreedMinorWaiver) return false;
-    return attendees.every(
-      (a) => a.firstName && a.lastName && a.ageRange && a.gender && (!a.wantsShirt || a.shirtSize)
-    );
-  }, [
-    submitting,
-    firstName,
-    lastName,
-    email,
-    confirmEmail,
-    emailFormatError,
-    emailMatchError,
-    phone,
-    district,
-    churchName,
-    city,
-    agreedGuidelines,
-    agreedRefundPolicy,
-    confirmedPayment,
-    hasMinor,
-    agreedMinorWaiver,
-    attendees,
-  ]);
+    if (!agreedRefundPolicy) return "Please check the box to agree to the Cancellation & Transfer Policy.";
+    return null;
+  }
+
+  function minorWaiverError(): string | null {
+    if (!hasMinor) return null;
+    if (!agreedMinorWaiver) return "Please check the box confirming you'll bring a signed parental/guardian waiver.";
+    return null;
+  }
+
+  function paymentError(): string | null {
+    if (!confirmedPayment) return "Please check the box confirming your payment coordination.";
+    return null;
+  }
+
+  function goToFirstError(): boolean {
+    const steps: { key: string; ref: RefObject<HTMLDivElement | null>; message: string | null }[] = [
+      { key: "contact", ref: contactRef, message: contactError() },
+      ...attendees.map((a, i) => ({
+        key: `attendee-${i}`,
+        ref: { current: attendeeRefs.current[i] },
+        message: attendeeError(a),
+      })),
+      { key: "guidelines", ref: guidelinesRef, message: guidelinesError() },
+      { key: "refund", ref: refundRef, message: refundError() },
+      ...(hasMinor ? [{ key: "minorWaiver", ref: minorWaiverRef, message: minorWaiverError() }] : []),
+      { key: "payment", ref: paymentRef, message: paymentError() },
+    ];
+
+    const firstInvalid = steps.find((s) => s.message);
+    if (!firstInvalid) {
+      setInvalidKey(null);
+      return true;
+    }
+
+    setInvalidKey(firstInvalid.key);
+    const el = firstInvalid.ref.current;
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    el?.querySelector<HTMLElement>("input, select, textarea, summary")?.focus();
+    return false;
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
-    if (emailFormatError || emailMatchError) {
-      setError(emailFormatError ?? emailMatchError);
-      return;
-    }
+    if (!goToFirstError()) return;
 
     setSubmitting(true);
     try {
@@ -170,14 +232,17 @@ export default function RegistrationForm() {
           agreedRefundPolicy,
           agreedMinorWaiver: hasMinor ? agreedMinorWaiver : false,
           confirmedPayment,
-          attendees: attendees.map((a) => ({
-            first_name: a.firstName,
-            last_name: a.lastName,
-            age_range: a.ageRange,
-            gender: a.gender,
-            wants_shirt: a.wantsShirt,
-            shirt_size: a.wantsShirt ? a.shirtSize : null,
-          })),
+          attendees: attendees.map((a) => {
+            const choice = effectiveShirtChoice(a) || "without";
+            return {
+              first_name: a.firstName,
+              last_name: a.lastName,
+              age_range: a.ageRange,
+              gender: a.gender,
+              wants_shirt: choice === "with",
+              shirt_size: choice === "with" ? a.shirtSize : null,
+            };
+          }),
         }),
       });
 
@@ -220,7 +285,12 @@ export default function RegistrationForm() {
     <>
       {submitting && <SubmitLoadingOverlay />}
       <form onSubmit={handleSubmit} noValidate className="space-y-6">
-        <Card title="Primary Contact">
+        <Card
+          title="Primary Contact"
+          cardRef={contactRef}
+          highlighted={invalidKey === "contact"}
+          errorMessage={contactError()}
+        >
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="First Name">
             <input className={inputClass} value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
@@ -418,130 +488,147 @@ export default function RegistrationForm() {
           />
         </div>
         <p className="mt-2 text-xs text-navy-900/50">
-          Sizes available: {SHIRT_SIZES.join(", ")}. You can add a shirt for each attendee below.
+          Sizes available: {SHIRT_SIZES.join(", ")}. Choose with or without a shirt for each attendee below.
         </p>
       </Card>
 
       <Card title={`Who's Attending? (${attendees.length})`}>
         <div className="space-y-4">
-          {attendees.map((attendee, index) => (
-            <div key={index} className="rounded-lg border border-navy-900/10 p-4">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-navy-900">
-                  {index === 0 ? "Person 1 (You)" : `Person ${index + 1}`}
-                </p>
-                {index > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => removeAttendee(index)}
-                    className="text-xs font-semibold text-red-600 hover:underline"
-                  >
-                    Remove
-                  </button>
-                )}
-              </div>
-              <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <Field label="First Name">
-                  <input
-                    className={inputClass}
-                    value={attendee.firstName}
-                    onChange={(e) => updateAttendee(index, { firstName: e.target.value })}
-                    required
-                  />
-                </Field>
-                <Field label="Last Name">
-                  <input
-                    className={inputClass}
-                    value={attendee.lastName}
-                    onChange={(e) => updateAttendee(index, { lastName: e.target.value })}
-                    required
-                  />
-                </Field>
-              </div>
-              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <Field label="Age">
-                  <select
-                    className={inputClass}
-                    value={attendee.ageRange}
-                    onChange={(e) => updateAttendee(index, { ageRange: e.target.value as Attendee["ageRange"] })}
-                    required
-                  >
-                    <option value="" disabled>
-                      Select age range
-                    </option>
-                    {AGE_RANGES.map((range) => (
-                      <option key={range} value={range}>
-                        {range}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Gender">
-                  <select
-                    className={inputClass}
-                    value={attendee.gender}
-                    onChange={(e) => updateAttendee(index, { gender: e.target.value as Attendee["gender"] })}
-                    required
-                  >
-                    <option value="" disabled>
-                      Select gender
-                    </option>
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                  </select>
-                </Field>
-              </div>
-
-              <div className="mt-4 rounded-md bg-cream p-3">
-                {shirtAvailable ? (
-                  <>
-                    <label className="flex items-center gap-2 text-sm font-semibold text-navy-900">
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 accent-gold-600"
-                        checked={attendee.wantsShirt}
-                        onChange={(e) =>
-                          updateAttendee(index, {
-                            wantsShirt: e.target.checked,
-                            shirtSize: e.target.checked ? attendee.shirtSize : "",
-                          })
-                        }
-                      />
-                      Add a camp shirt for this person
-                    </label>
-                    {attendee.wantsShirt && (
-                      <div className="mt-3">
-                        <Field label="Shirt Size">
-                          <select
-                            className={inputClass}
-                            value={attendee.shirtSize}
-                            onChange={(e) => updateAttendee(index, { shirtSize: e.target.value as ShirtSize })}
-                            required
-                          >
-                            <option value="" disabled>
-                              Select size
-                            </option>
-                            {SHIRT_SIZES.map((size) => (
-                              <option key={size} value={size}>
-                                {size}
-                              </option>
-                            ))}
-                          </select>
-                        </Field>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <p className="text-xs text-navy-900/50">
-                    The camp shirt add-on is no longer available for new registrations.
+          {attendees.map((attendee, index) => {
+            const rowInvalid = invalidKey === `attendee-${index}`;
+            const rowError = rowInvalid ? attendeeError(attendee) : null;
+            const choice = effectiveShirtChoice(attendee);
+            return (
+              <div
+                key={index}
+                ref={(el) => {
+                  attendeeRefs.current[index] = el;
+                }}
+                className={`rounded-lg border p-4 ${rowInvalid ? "border-red-500 ring-2 ring-red-200" : "border-navy-900/10"}`}
+              >
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-navy-900">
+                    {index === 0 ? "Person 1 (You)" : `Person ${index + 1}`}
                   </p>
-                )}
-                <p className="mt-2 text-xs font-semibold text-gold-700">
-                  Estimated fee for this person: ₱{estimateFeePhp(today, attendee.wantsShirt).toLocaleString()}
-                </p>
+                  {index > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => removeAttendee(index)}
+                      className="text-xs font-semibold text-red-600 hover:underline"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+                <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <Field label="First Name">
+                    <input
+                      className={inputClass}
+                      value={attendee.firstName}
+                      onChange={(e) => updateAttendee(index, { firstName: e.target.value })}
+                      required
+                    />
+                  </Field>
+                  <Field label="Last Name">
+                    <input
+                      className={inputClass}
+                      value={attendee.lastName}
+                      onChange={(e) => updateAttendee(index, { lastName: e.target.value })}
+                      required
+                    />
+                  </Field>
+                </div>
+                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <Field label="Age">
+                    <select
+                      className={inputClass}
+                      value={attendee.ageRange}
+                      onChange={(e) => updateAttendee(index, { ageRange: e.target.value as Attendee["ageRange"] })}
+                      required
+                    >
+                      <option value="" disabled>
+                        Select age range
+                      </option>
+                      {AGE_RANGES.map((range) => (
+                        <option key={range} value={range}>
+                          {range}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Gender">
+                    <select
+                      className={inputClass}
+                      value={attendee.gender}
+                      onChange={(e) => updateAttendee(index, { gender: e.target.value as Attendee["gender"] })}
+                      required
+                    >
+                      <option value="" disabled>
+                        Select gender
+                      </option>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                    </select>
+                  </Field>
+                </div>
+
+                <div className="mt-4 rounded-md bg-cream p-3">
+                  {singleShirtOption ? (
+                    <p className="text-xs text-navy-900/60">
+                      Only the <span className="font-semibold">{singleShirtOption.label}</span> rate (₱
+                      {singleShirtOption.price}) is currently available.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className={labelClass}>Camp Shirt (required)</p>
+                      {activeShirtOptions.map((opt) => (
+                        <label key={opt.choice} className="flex items-center gap-2 text-sm text-navy-900">
+                          <input
+                            type="radio"
+                            name={`shirt-choice-${index}`}
+                            className="h-4 w-4 accent-gold-600"
+                            checked={attendee.shirtChoice === opt.choice}
+                            onChange={() =>
+                              updateAttendee(index, {
+                                shirtChoice: opt.choice,
+                                shirtSize: opt.choice === "with" ? attendee.shirtSize : "",
+                              })
+                            }
+                          />
+                          {opt.label} — ₱{opt.price}
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                  {choice === "with" && (
+                    <div className="mt-3">
+                      <Field label="Shirt Size">
+                        <select
+                          className={inputClass}
+                          value={attendee.shirtSize}
+                          onChange={(e) => updateAttendee(index, { shirtSize: e.target.value as ShirtSize })}
+                          required
+                        >
+                          <option value="" disabled>
+                            Select size
+                          </option>
+                          {SHIRT_SIZES.map((size) => (
+                            <option key={size} value={size}>
+                              {size}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                    </div>
+                  )}
+                  <p className="mt-2 text-xs font-semibold text-gold-700">
+                    Estimated fee for this person: ₱{estimateFeePhp(today, choice === "with").toLocaleString()}
+                  </p>
+                </div>
+                {rowError && <p className="mt-3 text-sm font-semibold text-red-600">{rowError}</p>}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
         <button
           type="button"
@@ -552,7 +639,12 @@ export default function RegistrationForm() {
         </button>
       </Card>
 
-      <Card title="Camp Rules & Guidelines">
+      <Card
+        title="Camp Rules & Guidelines"
+        cardRef={guidelinesRef}
+        highlighted={invalidKey === "guidelines"}
+        errorMessage={guidelinesError()}
+      >
         <ExpandableAgreement
           summary="View the full Camp Rules and Guidelines"
           hasOpened={openedGuidelines}
@@ -569,7 +661,12 @@ export default function RegistrationForm() {
         </ExpandableAgreement>
       </Card>
 
-      <Card title="Cancellation & Transfer Policy">
+      <Card
+        title="Cancellation & Transfer Policy"
+        cardRef={refundRef}
+        highlighted={invalidKey === "refund"}
+        errorMessage={refundError()}
+      >
         <ExpandableAgreement
           summary="View the Cancellation and Transfer Policy"
           hasOpened={openedRefundPolicy}
@@ -587,7 +684,12 @@ export default function RegistrationForm() {
       </Card>
 
       {hasMinor && (
-        <Card title="Parental / Guardian Waiver Required">
+        <Card
+          title="Parental / Guardian Waiver Required"
+          cardRef={minorWaiverRef}
+          highlighted={invalidKey === "minorWaiver"}
+          errorMessage={minorWaiverError()}
+        >
           <p className="text-sm text-navy-900/80">
             Your group includes at least one minor (under 18). Their parent or legal guardian must sign a
             waiver form for them to attend. Bring the signed, physical copy to camp check-in — it is not
@@ -614,7 +716,12 @@ export default function RegistrationForm() {
         </Card>
       )}
 
-      <Card title="Payment">
+      <Card
+        title="Payment"
+        cardRef={paymentRef}
+        highlighted={invalidKey === "payment"}
+        errorMessage={paymentError()}
+      >
         <p className="text-sm text-navy-900/70">
           Estimated total due for {attendees.length} {attendees.length === 1 ? "person" : "people"}:
         </p>
@@ -662,7 +769,7 @@ export default function RegistrationForm() {
 
       <LiquidMetalButton
         type="submit"
-        disabled={!canSubmit}
+        disabled={submitting}
         className="w-full rounded-md"
         innerClassName="rounded-md py-4 text-sm font-bold uppercase tracking-wide"
       >
@@ -683,7 +790,7 @@ function ExpandableAgreement({
   agreementText,
 }: {
   summary: string;
-  children: React.ReactNode;
+  children: ReactNode;
   hasOpened: boolean;
   onOpen: () => void;
   checked: boolean;
@@ -721,11 +828,29 @@ function ExpandableAgreement({
   );
 }
 
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
+function Card({
+  title,
+  children,
+  cardRef,
+  highlighted,
+  errorMessage,
+}: {
+  title: string;
+  children: ReactNode;
+  cardRef?: RefObject<HTMLDivElement>;
+  highlighted?: boolean;
+  errorMessage?: string | null;
+}) {
   return (
-    <div className="rounded-xl border border-navy-900/10 bg-white p-5 shadow-sm sm:p-6">
+    <div
+      ref={cardRef}
+      className={`rounded-xl border bg-white p-5 shadow-sm sm:p-6 ${
+        highlighted ? "border-red-500 ring-2 ring-red-200" : "border-navy-900/10"
+      }`}
+    >
       <h2 className="text-lg font-bold text-navy-900">{title}</h2>
       <div className="mt-4">{children}</div>
+      {highlighted && errorMessage && <p className="mt-3 text-sm font-semibold text-red-600">{errorMessage}</p>}
     </div>
   );
 }
@@ -749,7 +874,7 @@ function ModeButton({
 }: {
   active: boolean;
   onClick: () => void;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <button
