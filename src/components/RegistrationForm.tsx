@@ -679,9 +679,6 @@ export default function RegistrationForm() {
                       </Field>
                     </div>
                   )}
-                  <p className="mt-2 text-xs font-semibold text-gold-700">
-                    Fee for this person: {formatPhp(estimateFeePhp(today, choice === "with", attendee.ageRange))}
-                  </p>
                 </div>
                 {rowError && <p className="mt-3 text-sm font-semibold text-red-600">{rowError}</p>}
               </div>
