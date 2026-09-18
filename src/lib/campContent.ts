@@ -84,9 +84,53 @@ export const REFUND_AGREEMENT_TEXT =
 export const REGISTRATION_CONFIRMATION_DISCLAIMER =
   "Submission of this registration form does not automatically guarantee a confirmed camp slot. Your registration will be considered confirmed only after verification of the submitted information and payment by the designated Sanctuary Camp 2026 team. Please ensure that all information provided is accurate. The organizing committee may contact you or your designated church/district representative if clarification or additional information is required.";
 
-/** A minor for waiver purposes: any single-year age under 18, or the general "0-12" bracket. */
+/** A minor for waiver purposes: any single-year age under 18, or a child age bracket. */
 export function isMinorAgeRange(ageRange: string): boolean {
-  if (ageRange === "0-12") return true;
+  if (ageRange === "0-6" || ageRange === "7-9" || ageRange === "10-12") return true;
   const asNumber = Number(ageRange);
   return Number.isInteger(asNumber) && asNumber < 18;
 }
+
+export const AGE_PRICING_NOTE =
+  "Pricing above is the full (age 10 and up) rate. Children age 6 and below attend free, and ages 7-9 pay half of the listed rate — the camp shirt add-on is always an extra ₱250 on top, regardless of age.";
+
+export const DATA_PRIVACY_POLICY_TITLE = "Data Privacy Policy";
+
+export const DATA_PRIVACY_POLICY: { heading: string; body: string }[] = [
+  {
+    heading: "1. Our commitment",
+    body: "The Area 2 Adventist Youth Federation (\"we,\" \"us,\" or \"the organizing committee\") is committed to protecting the personal data of everyone who registers for Sanctuary Camp 2026, in accordance with the Data Privacy Act of 2012 (Republic Act No. 10173) and its Implementing Rules and Regulations.",
+  },
+  {
+    heading: "2. Information we collect",
+    body: "When you register, we collect: (a) contact information for the primary registrant (first and last name, email address, phone number); (b) church and district affiliation and city; (c) information for each attendee in the group, including first and last name, age range, and gender; (d) an optional camp shirt size, if selected; (e) a payment-coordination confirmation (we do not collect card, bank, or e-wallet details — payment itself is coordinated offline through your AY Leader/District Representative); and (f) if the group includes a minor, a photo or scan of the signed parental/guardian waiver form, which may include the minor's name, a guardian's signature and contact details, and any medical or emergency information voluntarily written on that form.",
+  },
+  {
+    heading: "3. Why we collect it",
+    body: "This information is collected solely to process and verify your registration, assign Camp IDs, calculate the correct registration fee, coordinate camp logistics (such as shirt sizing and group counts), enable the organizing committee and your District President to confirm payment, contact you regarding your registration, and, where a minor is attending, confirm that parental/guardian consent has been given.",
+  },
+  {
+    heading: "4. Who can access your information",
+    body: "Access is limited to the Sanctuary Camp 2026 organizing committee and designated administrators who review registrations, and to your own church's District President or AY Leader for payment coordination and attendee-list purposes. We do not sell, rent, or trade your personal data to any third party for marketing purposes.",
+  },
+  {
+    heading: "5. Service providers",
+    body: "We use Supabase (database and file storage) to store registration records and uploaded waiver forms, and Brevo (transactional email) to send your registration confirmation email. These providers process data on our behalf under their own security and confidentiality safeguards, and only to the extent necessary to provide these services to us.",
+  },
+  {
+    heading: "6. Data retention",
+    body: "Registration records are retained for as long as reasonably necessary for camp planning, financial reconciliation, and post-camp reporting, after which they may be archived or securely deleted. You may request earlier deletion of your data as described in Section 7, subject to any records we are legally required to keep.",
+  },
+  {
+    heading: "7. Your rights",
+    body: "Under the Data Privacy Act, you have the right to be informed, to access your personal data, to correct inaccurate data, to object to processing, to erasure or blocking of your data (subject to legal or legitimate retention needs), to data portability, and to file a complaint with the National Privacy Commission. To exercise any of these rights, contact us using the details in Section 9.",
+  },
+  {
+    heading: "8. Security measures",
+    body: "We apply reasonable organizational and technical safeguards to protect your data, including access restricted to authorized administrators, encrypted data storage and transmission provided by our hosting and database providers, and file-upload validation to prevent malicious or unauthorized files from being stored.",
+  },
+  {
+    heading: "9. Consent and contact",
+    body: "By submitting the registration form, you consent to the collection and processing of your personal data (and, where applicable, that of the minor(s) you are registering) as described in this policy. For questions, corrections, or data privacy concerns, please contact the organizing committee through your AY Leader/District Representative or via the Messenger link on this site.",
+  },
+];

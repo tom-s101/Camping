@@ -5,7 +5,7 @@ import { useState, type ReactNode } from "react";
 import { ChevronDownIcon } from "@/components/icons";
 import { EVENT } from "@/lib/event";
 import { PRICING_TIERS, SHIRT_SIZES } from "@/lib/pricing";
-import { CANCELLATION_POLICY, DO_NOT_BRING, PACKING_LIST, PACKING_REMINDER } from "@/lib/campContent";
+import { AGE_PRICING_NOTE, CANCELLATION_POLICY, DO_NOT_BRING, PACKING_LIST, PACKING_REMINDER } from "@/lib/campContent";
 
 const FAQS: { q: string; a: ReactNode }[] = [
   {
@@ -20,7 +20,7 @@ const FAQS: { q: string; a: ReactNode }[] = [
     q: "What are the fees?",
     a: (
       <div>
-        <p>Registration pricing depends on when you register:</p>
+        <p>Registration pricing (per person, age 10 and up) depends on when you register:</p>
         <ul className="mt-2 space-y-1.5">
           {PRICING_TIERS.map((tier) => (
             <li key={tier.label}>
@@ -28,6 +28,7 @@ const FAQS: { q: string; a: ReactNode }[] = [
             </li>
           ))}
         </ul>
+        <p className="mt-3 font-semibold text-navy-900">{AGE_PRICING_NOTE}</p>
       </div>
     ),
   },

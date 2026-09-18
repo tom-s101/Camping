@@ -18,8 +18,11 @@ import {
   type ShirtSize,
 } from "@/lib/pricing";
 import {
+  AGE_PRICING_NOTE,
   CAMP_RULES,
   CANCELLATION_POLICY,
+  DATA_PRIVACY_POLICY,
+  DATA_PRIVACY_POLICY_TITLE,
   GUIDELINES_AGREEMENT_TEXT,
   MINOR_DISCIPLINE_NOTICE,
   PAYMENT_CONFIRMATION_TEXT,
@@ -59,12 +62,23 @@ const inputClass =
 const labelClass = "text-sm font-semibold text-navy-900";
 const checkboxClass = "mt-0.5 h-4 w-4 shrink-0 accent-gold-600";
 
+function formatPhp(amount: number): string {
+  return amount === 0 ? "Free" : `₱${amount.toLocaleString()}`;
+}
+
+function ageRangeLabel(range: string): string {
+  if (range === "0-6") return "0-6 (Free)";
+  if (range === "7-9") return "7-9 (Half Price)";
+  return range;
+}
+
 export default function RegistrationForm() {
   const [idempotencyKey] = useState(() => crypto.randomUUID());
   const waiverFileInputId = useId();
   const today = useMemo(() => localDateISO(), []);
-  const activeShirtOptions = useMemo(() => getActiveShirtOptions(today), [today]);
-  const singleShirtOption = activeShirtOptions.length === 1 ? activeShirtOptions[0] : null;
+  // Full (age 10+) rates, used only for the general reference table --
+  // per-attendee prices below are computed with that attendee's own age.
+  const baseShirtOptions = useMemo(() => getActiveShirtOptions(today), [today]);
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -100,13 +114,18 @@ export default function RegistrationForm() {
   const [attendees, setAttendees] = useState<Attendee[]>([{ ...emptyAttendee }]);
   const hasMinor = attendees.some((a) => a.ageRange && isMinorAgeRange(a.ageRange));
 
+  function shirtOptionsFor(a: Attendee) {
+    return getActiveShirtOptions(today, a.ageRange);
+  }
+
   function effectiveShirtChoice(a: Attendee): ShirtChoice | "" {
-    return singleShirtOption ? singleShirtOption.choice : a.shirtChoice;
+    const options = shirtOptionsFor(a);
+    return options.length === 1 ? options[0].choice : a.shirtChoice;
   }
 
   const totalDue = attendees.reduce((sum, a) => {
     const choice = effectiveShirtChoice(a) || "without";
-    return sum + estimateFeePhp(today, choice === "with");
+    return sum + estimateFeePhp(today, choice === "with", a.ageRange);
   }, 0);
 
   const pricingNote = isEarlyBird(today)
@@ -117,6 +136,7 @@ export default function RegistrationForm() {
 
   const [openedGuidelines, setOpenedGuidelines] = useState(false);
   const [openedRefundPolicy, setOpenedRefundPolicy] = useState(false);
+  const [privacyPolicyOpen, setPrivacyPolicyOpen] = useState(false);
   const [agreedGuidelines, setAgreedGuidelines] = useState(false);
   const [agreedRefundPolicy, setAgreedRefundPolicy] = useState(false);
   const [waiverFile, setWaiverFile] = useState<File | null>(null);
@@ -495,16 +515,17 @@ export default function RegistrationForm() {
         <div className="overflow-hidden rounded-lg border border-navy-900/10">
           <table className="w-full text-left text-sm">
             <tbody>
-              {activeShirtOptions.map((opt) => (
+              {baseShirtOptions.map((opt) => (
                 <tr key={opt.choice} className="border-b border-navy-900/10 last:border-0">
                   <td className="px-3 py-2 font-semibold text-navy-900">{opt.label}</td>
-                  <td className="px-3 py-2 text-right font-bold text-gold-700">₱{opt.price}</td>
+                  <td className="px-3 py-2 text-right font-bold text-gold-700">{formatPhp(opt.price)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
         <p className="mt-2 text-xs text-navy-900/50">{pricingNote}</p>
+        <p className="mt-2 text-xs text-navy-900/50">{AGE_PRICING_NOTE}</p>
 
         <div className="mt-5 grid grid-cols-2 gap-3">
           <Image
@@ -532,6 +553,8 @@ export default function RegistrationForm() {
           {attendees.map((attendee, index) => {
             const rowInvalid = invalidKey === `attendee-${index}`;
             const rowError = rowInvalid ? attendeeError(attendee) : null;
+            const attendeeShirtOptions = shirtOptionsFor(attendee);
+            const singleShirtOption = attendeeShirtOptions.length === 1 ? attendeeShirtOptions[0] : null;
             const choice = effectiveShirtChoice(attendee);
             return (
               <div
@@ -586,7 +609,7 @@ export default function RegistrationForm() {
                       </option>
                       {AGE_RANGES.map((range) => (
                         <option key={range} value={range}>
-                          {range}
+                          {ageRangeLabel(range)}
                         </option>
                       ))}
                     </select>
@@ -610,13 +633,13 @@ export default function RegistrationForm() {
                 <div className="mt-4 rounded-md bg-cream p-3">
                   {singleShirtOption ? (
                     <p className="text-xs text-navy-900/60">
-                      Only the <span className="font-semibold">{singleShirtOption.label}</span> rate (₱
-                      {singleShirtOption.price}) is currently available.
+                      Only the <span className="font-semibold">{singleShirtOption.label}</span> rate (
+                      {formatPhp(singleShirtOption.price)}) is currently available.
                     </p>
                   ) : (
                     <div className="space-y-2">
                       <p className={labelClass}>Camp Shirt (required)</p>
-                      {activeShirtOptions.map((opt) => (
+                      {attendeeShirtOptions.map((opt) => (
                         <label key={opt.choice} className="flex items-center gap-2 text-sm text-navy-900">
                           <input
                             type="radio"
@@ -630,7 +653,7 @@ export default function RegistrationForm() {
                               })
                             }
                           />
-                          {opt.label} — ₱{opt.price}
+                          {opt.label} — {formatPhp(opt.price)}
                         </label>
                       ))}
                     </div>
@@ -657,7 +680,7 @@ export default function RegistrationForm() {
                     </div>
                   )}
                   <p className="mt-2 text-xs font-semibold text-gold-700">
-                    Fee for this person: ₱{estimateFeePhp(today, choice === "with").toLocaleString()}
+                    Fee for this person: {formatPhp(estimateFeePhp(today, choice === "with", attendee.ageRange))}
                   </p>
                 </div>
                 {rowError && <p className="mt-3 text-sm font-semibold text-red-600">{rowError}</p>}
@@ -809,6 +832,28 @@ export default function RegistrationForm() {
       )}
 
       <p className="text-xs leading-relaxed text-navy-900/60">{REGISTRATION_CONFIRMATION_DISCLAIMER}</p>
+
+      <p className="text-xs leading-relaxed text-navy-900/60">
+        By submitting this registration, you agree to our{" "}
+        <button
+          type="button"
+          onClick={() => setPrivacyPolicyOpen(true)}
+          className="font-semibold text-gold-700 underline underline-offset-2"
+        >
+          Data Privacy Policy
+        </button>
+        .
+      </p>
+      <Modal open={privacyPolicyOpen} onClose={() => setPrivacyPolicyOpen(false)} title={DATA_PRIVACY_POLICY_TITLE}>
+        <div className="space-y-4">
+          {DATA_PRIVACY_POLICY.map((section, i) => (
+            <div key={i}>
+              <p className="font-semibold text-navy-900">{section.heading}</p>
+              <p className="mt-1">{section.body}</p>
+            </div>
+          ))}
+        </div>
+      </Modal>
 
       <LiquidMetalButton
         type="submit"

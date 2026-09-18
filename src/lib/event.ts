@@ -14,7 +14,9 @@ export const EVENT = {
 } as const;
 
 export const AGE_RANGES = [
-  "0-12",
+  "0-6",
+  "7-9",
+  "10-12",
   "13",
   "14",
   "15",
