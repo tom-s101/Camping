@@ -10,8 +10,8 @@ const title = `${EVENT.name} | ${EVENT.theme}`;
 const description = `Register for ${EVENT.name}, ${EVENT.dateLabel} at ${EVENT.locationName}, ${EVENT.locationDetail}.`;
 const bannerImage = {
   url: "/images/sanctuary-banner.jpg",
-  width: 1208,
-  height: 605,
+  width: 2048,
+  height: 1024,
   alt: `${EVENT.name} — ${EVENT.theme}`,
 };
 
