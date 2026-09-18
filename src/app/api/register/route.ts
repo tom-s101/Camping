@@ -124,16 +124,24 @@ export async function POST(request: NextRequest) {
 
     const result = data as { registration_id: string; camp_numbers: number[]; total_amount_php: number };
 
-    sendRegistrationConfirmationEmail({
-      toEmail: b.email,
-      toName: `${b.firstName} ${b.lastName}`,
-      campNumbers: result.camp_numbers ?? [],
-      totalAmountPhp: Number(result.total_amount_php ?? 0),
-      district: b.district,
-      churchName: b.churchName,
-    }).catch((err) => {
+    // Awaited (not fire-and-forget): on serverless platforms the runtime can
+    // freeze or tear down right after the response is sent, which would
+    // kill an in-flight fetch() to Brevo before it ever left the server.
+    // Still best-effort -- a thrown/rejected send is caught here so a Brevo
+    // outage never fails the registration itself.
+    try {
+      await sendRegistrationConfirmationEmail({
+        toEmail: b.email,
+        toName: `${b.firstName} ${b.lastName}`,
+        campNumbers: result.camp_numbers ?? [],
+        totalAmountPhp: Number(result.total_amount_php ?? 0),
+        district: b.district,
+        churchName: b.churchName,
+      });
+      console.log(`Brevo confirmation email sent to ${b.email} for registration ${result.registration_id}.`);
+    } catch (err) {
       console.error("Brevo confirmation email failed:", err);
-    });
+    }
 
     return NextResponse.json({ data: result }, { headers: { "Cache-Control": "no-store" } });
   } catch (err) {
