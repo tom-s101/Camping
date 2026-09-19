@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { formatCampId } from "@/lib/campId";
 import type { Registration } from "@/lib/types";
+import Modal from "@/components/Modal";
 
 const STATUS_STYLES: Record<Registration["payment_status"], string> = {
   pending: "bg-amber-100 text-amber-800",
@@ -10,23 +11,44 @@ const STATUS_STYLES: Record<Registration["payment_status"], string> = {
   rejected: "bg-red-100 text-red-800",
 };
 
+type DeleteStage = "closed" | "confirm1" | "confirm2";
+
 export default function RegistrationCard({
   registration,
   onReview,
+  onDelete,
   onPreviewImage,
 }: {
   registration: Registration;
   onReview: (id: string, action: "approve" | "reject") => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
   onPreviewImage: (url: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [deleteStage, setDeleteStage] = useState<DeleteStage>("closed");
+  const [deleting, setDeleting] = useState(false);
 
   async function handleReview(action: "approve" | "reject") {
     setBusy(true);
     await onReview(registration.id, action);
     setBusy(false);
   }
+
+  function closeDeleteModal() {
+    if (deleting) return;
+    setDeleteStage("closed");
+  }
+
+  async function confirmDelete() {
+    setDeleting(true);
+    await onDelete(registration.id);
+    setDeleting(false);
+    setDeleteStage("closed");
+  }
+
+  const contactName = `${registration.contact_first_name} ${registration.contact_last_name}`;
+  const campNumbers = registration.attendees.map((a) => formatCampId(a.camp_number)).join(", ");
 
   return (
     <div className="rounded-lg border border-navy-900/10 bg-white">
@@ -183,8 +205,71 @@ export default function RegistrationCard({
               Reject
             </button>
           </div>
+          <button
+            type="button"
+            onClick={() => setDeleteStage("confirm1")}
+            className="mt-2 w-full rounded-md border border-red-600 py-2 text-xs font-bold uppercase text-red-600 active:bg-red-50"
+          >
+            Delete Registration
+          </button>
         </div>
       )}
+
+      <Modal open={deleteStage !== "closed"} onClose={closeDeleteModal} title="Delete Registration">
+        {deleteStage === "confirm1" && (
+          <div>
+            <p>
+              Are you sure you want to delete the registration for <span className="font-semibold text-navy-900">{contactName}</span>{" "}
+              ({registration.group_size} attendee{registration.group_size === 1 ? "" : "s"})?
+            </p>
+            <p className="mt-2">This will permanently remove this registration and everyone in it from the system.</p>
+            <div className="mt-5 flex gap-2">
+              <button
+                type="button"
+                onClick={closeDeleteModal}
+                className="flex-1 rounded-md border border-navy-900/20 py-2.5 text-sm font-bold text-navy-900 active:bg-navy-900/5"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeleteStage("confirm2")}
+                className="flex-1 rounded-md bg-red-600 py-2.5 text-sm font-bold text-white active:bg-red-700"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        )}
+        {deleteStage === "confirm2" && (
+          <div>
+            <p className="font-semibold text-red-700">This is your final confirmation — this action cannot be undone.</p>
+            <p className="mt-2">
+              Deleting will permanently remove {contactName}&rsquo;s registration
+              {campNumbers ? ` (${campNumbers})` : ""} and all attendee records tied to it, including any uploaded waiver
+              form.
+            </p>
+            <div className="mt-5 flex gap-2">
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={closeDeleteModal}
+                className="flex-1 rounded-md border border-navy-900/20 py-2.5 text-sm font-bold text-navy-900 disabled:opacity-40 active:bg-navy-900/5"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={confirmDelete}
+                className="flex-1 rounded-md bg-red-600 py-2.5 text-sm font-bold text-white disabled:opacity-40 active:bg-red-700"
+              >
+                {deleting ? "Deleting…" : "Yes, Delete Permanently"}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

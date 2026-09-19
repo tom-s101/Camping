@@ -70,6 +70,17 @@ export default function DashboardApp() {
     }
   }
 
+  async function handleDelete(id: string) {
+    try {
+      const res = await fetch(`/api/admin/registrations/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Request failed.");
+      await fetchRegistrations(query);
+      if (tab === "stats") await fetchStats();
+    } catch {
+      setLoadError("Could not delete that registration. Please try again.");
+    }
+  }
+
   const rejected = useMemo(() => registrations.filter((r) => r.payment_status === "rejected"), [registrations]);
 
   async function handleLogout() {
@@ -135,7 +146,13 @@ export default function DashboardApp() {
               ) : (
                 <div className="space-y-3">
                   {registrations.map((r) => (
-                    <RegistrationCard key={r.id} registration={r} onReview={handleReview} onPreviewImage={setPreviewImage} />
+                    <RegistrationCard
+                      key={r.id}
+                      registration={r}
+                      onReview={handleReview}
+                      onDelete={handleDelete}
+                      onPreviewImage={setPreviewImage}
+                    />
                   ))}
                 </div>
               )}
@@ -148,7 +165,13 @@ export default function DashboardApp() {
                 <p className="text-sm text-navy-900/50">No rejected payments.</p>
               ) : (
                 rejected.map((r) => (
-                  <RegistrationCard key={r.id} registration={r} onReview={handleReview} onPreviewImage={setPreviewImage} />
+                  <RegistrationCard
+                    key={r.id}
+                    registration={r}
+                    onReview={handleReview}
+                    onDelete={handleDelete}
+                    onPreviewImage={setPreviewImage}
+                  />
                 ))
               )}
             </div>
