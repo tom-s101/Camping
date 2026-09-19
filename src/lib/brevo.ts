@@ -130,7 +130,7 @@ export async function sendRegistrationConfirmationEmail(input: ConfirmationEmail
   const senderEmail = process.env.BREVO_SENDER_EMAIL || "no-reply@area2spiritualcamp.org";
   const senderName = process.env.BREVO_SENDER_NAME || "Sanctuary Camp 2026";
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://area2spiritualcamp.org").replace(/\/$/, "");
-  const headerImageUrl = `${siteUrl}/images/email-header.jpg`;
+  const headerImageUrl = `${siteUrl}/images/sanctuary-banner.jpg`;
 
   const response = await fetch(BREVO_API_URL, {
     method: "POST",
