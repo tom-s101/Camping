@@ -73,11 +73,16 @@ export default function DashboardApp() {
   async function handleDelete(id: string) {
     try {
       const res = await fetch(`/api/admin/registrations/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Request failed.");
+      const body = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(body?.error ? `${body.error} (HTTP ${res.status})` : `Request failed (HTTP ${res.status}).`);
+      }
       await fetchRegistrations(query);
       if (tab === "stats") await fetchStats();
-    } catch {
-      setLoadError("Could not delete that registration. Please try again.");
+    } catch (err) {
+      setLoadError(
+        `Could not delete that registration: ${err instanceof Error ? err.message : "Unknown error. Please try again."}`
+      );
     }
   }
 

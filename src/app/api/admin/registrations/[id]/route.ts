@@ -29,6 +29,7 @@ export async function DELETE(_request: NextRequest, { params }: { params: { id: 
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error(`DELETE /api/admin/registrations/${params.id} failed:`, err);
-    return NextResponse.json({ error: "Could not delete that registration." }, { status: 500 });
+    const message = err instanceof Error ? err.message : "Unknown error.";
+    return NextResponse.json({ error: `Could not delete that registration: ${message}` }, { status: 500 });
   }
 }
