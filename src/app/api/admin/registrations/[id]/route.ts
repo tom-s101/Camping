@@ -16,15 +16,21 @@ export async function DELETE(_request: NextRequest, { params }: { params: { id: 
       return NextResponse.json({ error: "Registration not found." }, { status: 404 });
     }
 
-    if (registration.payment_proof_path) {
-      await supabaseAdmin.storage.from("payment-proofs").remove([registration.payment_proof_path]);
-    }
-    if (registration.waiver_form_path) {
-      await supabaseAdmin.storage.from("waiver-forms").remove([registration.waiver_form_path]);
-    }
-
     const { error: deleteError } = await supabaseAdmin.from("registrations").delete().eq("id", params.id);
     if (deleteError) throw deleteError;
+
+    // Row is already gone; storage cleanup is best-effort so a network
+    // hiccup here shouldn't make the client think the delete failed.
+    try {
+      if (registration.payment_proof_path) {
+        await supabaseAdmin.storage.from("payment-proofs").remove([registration.payment_proof_path]);
+      }
+      if (registration.waiver_form_path) {
+        await supabaseAdmin.storage.from("waiver-forms").remove([registration.waiver_form_path]);
+      }
+    } catch (storageErr) {
+      console.error(`Storage cleanup for registration ${params.id} failed:`, storageErr);
+    }
 
     return NextResponse.json({ ok: true });
   } catch (err) {

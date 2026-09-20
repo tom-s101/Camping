@@ -77,6 +77,10 @@ export default function DashboardApp() {
       if (!res.ok) {
         throw new Error(body?.error ? `${body.error} (HTTP ${res.status})` : `Request failed (HTTP ${res.status}).`);
       }
+      // The row is confirmed deleted on the server at this point. Remove it
+      // locally right away so the list and CSV export reflect reality even
+      // if the best-effort refresh below fails (e.g. a flaky connection).
+      setRegistrations((prev) => prev.filter((r) => r.id !== id));
       await fetchRegistrations(query);
       if (tab === "stats") await fetchStats();
     } catch (err) {
