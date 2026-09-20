@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Registration, Stats } from "@/lib/types";
 import { exportRegistrationsToCsv } from "@/lib/exportCsv";
@@ -19,11 +19,22 @@ export default function DashboardApp() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
+  // With polling, refresh-on-focus, and post-action refreshes all hitting
+  // this endpoint, multiple requests can be in flight at once and are NOT
+  // guaranteed to resolve in the order they were sent. Without a guard, an
+  // older request issued before a delete can resolve after the newer
+  // post-delete refresh and silently overwrite the correct state with the
+  // stale one -- reintroducing an already-deleted row into the list. This
+  // counter makes only the most-recently-*issued* request allowed to update
+  // state, so a stale response can never win regardless of resolve order.
+  const registrationsRequestIdRef = useRef(0);
+
   // A "silent" fetch keeps the list in sync with what's actually in Supabase
   // (e.g. a registration another admin, or another tab, just deleted)
   // without flashing the loading state or surfacing transient poll errors.
   async function fetchRegistrations(q: string, options?: { silent?: boolean }) {
     const silent = options?.silent ?? false;
+    const requestId = ++registrationsRequestIdRef.current;
     if (!silent) {
       setLoading(true);
       setLoadError(null);
@@ -32,11 +43,13 @@ export default function DashboardApp() {
       const res = await fetch(`/api/admin/registrations?q=${encodeURIComponent(q)}`, { cache: "no-store" });
       if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? "Request failed.");
       const body = await res.json();
+      if (requestId !== registrationsRequestIdRef.current) return;
       setRegistrations(body.registrations);
     } catch (err) {
+      if (requestId !== registrationsRequestIdRef.current) return;
       if (!silent) setLoadError(err instanceof Error ? err.message : "Could not load registrations.");
     } finally {
-      if (!silent) setLoading(false);
+      if (requestId === registrationsRequestIdRef.current && !silent) setLoading(false);
     }
   }
 
@@ -46,12 +59,18 @@ export default function DashboardApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
 
+  const statsRequestIdRef = useRef(0);
+
   async function fetchStats(options?: { silent?: boolean }) {
+    const requestId = ++statsRequestIdRef.current;
     try {
       const res = await fetch("/api/admin/stats", { cache: "no-store" });
       if (!res.ok) throw new Error("Request failed.");
-      setStats(await res.json());
+      const body = await res.json();
+      if (requestId !== statsRequestIdRef.current) return;
+      setStats(body);
     } catch {
+      if (requestId !== statsRequestIdRef.current) return;
       if (!options?.silent) setLoadError("Could not load stats.");
     }
   }
