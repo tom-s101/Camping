@@ -19,18 +19,24 @@ export default function DashboardApp() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
-  async function fetchRegistrations(q: string) {
-    setLoading(true);
-    setLoadError(null);
+  // A "silent" fetch keeps the list in sync with what's actually in Supabase
+  // (e.g. a registration another admin, or another tab, just deleted)
+  // without flashing the loading state or surfacing transient poll errors.
+  async function fetchRegistrations(q: string, options?: { silent?: boolean }) {
+    const silent = options?.silent ?? false;
+    if (!silent) {
+      setLoading(true);
+      setLoadError(null);
+    }
     try {
       const res = await fetch(`/api/admin/registrations?q=${encodeURIComponent(q)}`, { cache: "no-store" });
       if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? "Request failed.");
       const body = await res.json();
       setRegistrations(body.registrations);
     } catch (err) {
-      setLoadError(err instanceof Error ? err.message : "Could not load registrations.");
+      if (!silent) setLoadError(err instanceof Error ? err.message : "Could not load registrations.");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }
 
@@ -40,13 +46,13 @@ export default function DashboardApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
 
-  async function fetchStats() {
+  async function fetchStats(options?: { silent?: boolean }) {
     try {
       const res = await fetch("/api/admin/stats", { cache: "no-store" });
       if (!res.ok) throw new Error("Request failed.");
       setStats(await res.json());
     } catch {
-      setLoadError("Could not load stats.");
+      if (!options?.silent) setLoadError("Could not load stats.");
     }
   }
 
@@ -54,6 +60,31 @@ export default function DashboardApp() {
     if (tab === "stats") fetchStats();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
+
+  // Keep every open dashboard converged on the backend: poll in the
+  // background, and refresh immediately when the tab regains focus, so a
+  // deletion made elsewhere (another tab, another admin) doesn't keep
+  // showing here as a ghost registration.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchRegistrations(query, { silent: true });
+      if (tab === "stats") fetchStats({ silent: true });
+    }, 5000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, tab]);
+
+  useEffect(() => {
+    function handleVisibility() {
+      if (document.visibilityState === "visible") {
+        fetchRegistrations(query, { silent: true });
+        if (tab === "stats") fetchStats({ silent: true });
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, tab]);
 
   async function handleReview(id: string, action: "approve" | "reject") {
     try {
@@ -77,17 +108,18 @@ export default function DashboardApp() {
       if (!res.ok) {
         throw new Error(body?.error ? `${body.error} (HTTP ${res.status})` : `Request failed (HTTP ${res.status}).`);
       }
-      // The row is confirmed deleted on the server at this point. Remove it
-      // locally right away so the list and CSV export reflect reality even
-      // if the best-effort refresh below fails (e.g. a flaky connection).
-      setRegistrations((prev) => prev.filter((r) => r.id !== id));
-      await fetchRegistrations(query);
-      if (tab === "stats") await fetchStats();
     } catch (err) {
       setLoadError(
         `Could not delete that registration: ${err instanceof Error ? err.message : "Unknown error. Please try again."}`
       );
+      return;
     }
+    // The row is confirmed deleted on the server at this point. Remove it
+    // locally right away, then reconcile with the server silently so a
+    // flaky follow-up refresh is never mistaken for a failed delete.
+    setRegistrations((prev) => prev.filter((r) => r.id !== id));
+    await fetchRegistrations(query, { silent: true });
+    if (tab === "stats") await fetchStats({ silent: true });
   }
 
   const rejected = useMemo(() => registrations.filter((r) => r.payment_status === "rejected"), [registrations]);

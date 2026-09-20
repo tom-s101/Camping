@@ -16,8 +16,18 @@ export async function DELETE(_request: NextRequest, { params }: { params: { id: 
       return NextResponse.json({ error: "Registration not found." }, { status: 404 });
     }
 
-    const { error: deleteError } = await supabaseAdmin.from("registrations").delete().eq("id", params.id);
+    // Select the deleted row back so we know the delete actually removed
+    // something instead of trusting a null error, which Postgres/PostgREST
+    // also returns for a delete that matched zero rows.
+    const { data: deletedRows, error: deleteError } = await supabaseAdmin
+      .from("registrations")
+      .delete()
+      .eq("id", params.id)
+      .select("id");
     if (deleteError) throw deleteError;
+    if (!deletedRows || deletedRows.length === 0) {
+      return NextResponse.json({ error: "Registration was already removed." }, { status: 404 });
+    }
 
     // Row is already gone; storage cleanup is best-effort so a network
     // hiccup here shouldn't make the client think the delete failed.
