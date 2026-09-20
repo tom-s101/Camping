@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase/admin";
+import { supabaseAdmin, reloadPostgrestSchema } from "@/lib/supabase/admin";
 import { sendRegistrationConfirmationEmail } from "@/lib/brevo";
 import { AGE_RANGES } from "@/lib/event";
 import { SHIRT_SIZES } from "@/lib/pricing";
@@ -123,6 +123,10 @@ export async function POST(request: NextRequest) {
     }
 
     const result = data as { registration_id: string; camp_numbers: number[]; total_amount_php: number };
+
+    // Best-effort: make sure the admin dashboard's queries can see this new
+    // row immediately, even if PostgREST's schema cache has gone stale.
+    await reloadPostgrestSchema();
 
     // Awaited (not fire-and-forget): on serverless platforms the runtime can
     // freeze or tear down right after the response is sent, which would

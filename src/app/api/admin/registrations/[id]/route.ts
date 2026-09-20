@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase/admin";
+import { supabaseAdmin, reloadPostgrestSchema } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +28,10 @@ export async function DELETE(_request: NextRequest, { params }: { params: { id: 
     if (!deletedRows || deletedRows.length === 0) {
       return NextResponse.json({ error: "Registration was already removed." }, { status: 404 });
     }
+
+    // Best-effort: keep the admin dashboard's queries in sync in case
+    // PostgREST's schema cache has gone stale.
+    await reloadPostgrestSchema();
 
     // Row is already gone; storage cleanup is best-effort so a network
     // hiccup here shouldn't make the client think the delete failed.
