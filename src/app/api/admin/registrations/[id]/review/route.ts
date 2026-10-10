@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase/admin";
+import { supabaseAdmin, reloadPostgrestSchema } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +21,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       .eq("id", params.id);
 
     if (error) throw error;
+    await reloadPostgrestSchema();
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error(`POST /api/admin/registrations/${params.id}/review failed:`, err);
