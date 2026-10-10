@@ -10,10 +10,14 @@ export const PRICING_TIMEZONE = "Asia/Manila";
 
 // Early Bird pricing ends at the end of this date (inclusive).
 export const EARLY_BIRD_CUTOFF = "2026-09-30";
-// Shirt add-on (at the Regular rate) closes at this exact moment, 8:00 PM
-// Philippine time. Keep in sync with compute_attendee_fee() in Supabase.
+// After Early Bird, the shirt add-on (at the Regular rate) is only open in
+// this window: [SHIRT_OPEN_AT, SHIRT_CUTOFF_AT), Philippine time. Keep in
+// sync with compute_attendee_fee() in Supabase.
+const SHIRT_OPEN_DATE = "2026-10-10";
 const SHIRT_CUTOFF_DATE = "2026-10-11";
+export const SHIRT_OPEN_AT = `${SHIRT_OPEN_DATE}T20:00:00+08:00`;
 export const SHIRT_CUTOFF_AT = `${SHIRT_CUTOFF_DATE}T20:00:00+08:00`;
+export const SHIRT_OPEN_LABEL = `${formatCutoff(SHIRT_OPEN_DATE)}, 8:00 PM (PH time)`;
 export const SHIRT_CUTOFF_LABEL = `${formatCutoff(SHIRT_CUTOFF_DATE)}, 8:00 PM (PH time)`;
 
 export const SHIRT_SIZES = ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL"] as const;
@@ -28,7 +32,7 @@ export const SHIRT_SURCHARGE_PHP = 250;
 export const PRICING_TIERS = [
   { label: "Early Bird Rate w/o Shirt", price: 500, note: `Until ${formatCutoff(EARLY_BIRD_CUTOFF)} ONLY`, shirt: false },
   { label: "Early Bird Rate w/ Shirt", price: 750, note: `Until ${formatCutoff(EARLY_BIRD_CUTOFF)} ONLY`, shirt: true },
-  { label: "Regular Rate w/ Shirt", price: 850, note: `Until ${SHIRT_CUTOFF_LABEL} ONLY`, shirt: true },
+  { label: "Regular Rate w/ Shirt", price: 850, note: `${SHIRT_OPEN_LABEL} until ${SHIRT_CUTOFF_LABEL} ONLY`, shirt: true },
   { label: "Standard Rate w/o Shirt", price: 600, note: "Starting 01 October 2026 · Walk-in/On-the-day registration", shirt: false },
 ] as const;
 
@@ -61,9 +65,15 @@ export function localDateISO(): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: PRICING_TIMEZONE });
 }
 
-/** Whether the shirt add-on can still be selected at the given moment. */
+/** Whether the post-Early-Bird shirt window is open at the given moment. */
 export function isShirtAvailable(now: Date = new Date()): boolean {
-  return now.getTime() < new Date(SHIRT_CUTOFF_AT).getTime();
+  const t = now.getTime();
+  return t >= new Date(SHIRT_OPEN_AT).getTime() && t < new Date(SHIRT_CUTOFF_AT).getTime();
+}
+
+/** Whether the shirt window hasn't opened yet at the given moment. */
+export function isShirtUpcoming(now: Date = new Date()): boolean {
+  return now.getTime() < new Date(SHIRT_OPEN_AT).getTime();
 }
 
 /** Whether Early Bird pricing is still in effect on the given date. */
