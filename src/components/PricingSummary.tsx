@@ -25,7 +25,7 @@ export default function PricingSummary() {
     );
   }
 
-  if (isShirtAvailable(today)) {
+  if (isShirtAvailable()) {
     return (
       <>
         ₱{options[0].price} w/o shirt · ₱{options[1].price} w/ shirt

@@ -130,7 +130,7 @@ export default function RegistrationForm() {
 
   const pricingNote = isEarlyBird(today)
     ? `Early Bird pricing — through ${EARLY_BIRD_CUTOFF_LABEL} only.`
-    : isShirtAvailable(today)
+    : isShirtAvailable()
     ? `Through ${SHIRT_CUTOFF_LABEL} only.`
     : "Standard / walk-in rate.";
 

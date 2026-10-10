@@ -10,9 +10,11 @@ export const PRICING_TIMEZONE = "Asia/Manila";
 
 // Early Bird pricing ends at the end of this date (inclusive).
 export const EARLY_BIRD_CUTOFF = "2026-09-30";
-// Shirt add-on (at the Regular rate) is available through the end of this
-// date (inclusive). After this date, only the no-shirt Standard rate applies.
-export const SHIRT_CUTOFF = "2026-10-10";
+// Shirt add-on (at the Regular rate) closes at this exact moment, 8:00 PM
+// Philippine time. Keep in sync with compute_attendee_fee() in Supabase.
+const SHIRT_CUTOFF_DATE = "2026-10-11";
+export const SHIRT_CUTOFF_AT = `${SHIRT_CUTOFF_DATE}T20:00:00+08:00`;
+export const SHIRT_CUTOFF_LABEL = `${formatCutoff(SHIRT_CUTOFF_DATE)}, 8:00 PM (PH time)`;
 
 export const SHIRT_SIZES = ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL"] as const;
 export type ShirtSize = (typeof SHIRT_SIZES)[number];
@@ -26,7 +28,7 @@ export const SHIRT_SURCHARGE_PHP = 250;
 export const PRICING_TIERS = [
   { label: "Early Bird Rate w/o Shirt", price: 500, note: `Until ${formatCutoff(EARLY_BIRD_CUTOFF)} ONLY`, shirt: false },
   { label: "Early Bird Rate w/ Shirt", price: 750, note: `Until ${formatCutoff(EARLY_BIRD_CUTOFF)} ONLY`, shirt: true },
-  { label: "Regular Rate w/ Shirt", price: 850, note: `Until ${formatCutoff(SHIRT_CUTOFF)} ONLY`, shirt: true },
+  { label: "Regular Rate w/ Shirt", price: 850, note: `Until ${SHIRT_CUTOFF_LABEL} ONLY`, shirt: true },
   { label: "Standard Rate w/o Shirt", price: 600, note: "Starting 01 October 2026 · Walk-in/On-the-day registration", shirt: false },
 ] as const;
 
@@ -44,7 +46,6 @@ export function ageFeeMultiplier(ageRange: string): number {
 }
 
 export const EARLY_BIRD_CUTOFF_LABEL = formatCutoff(EARLY_BIRD_CUTOFF);
-export const SHIRT_CUTOFF_LABEL = formatCutoff(SHIRT_CUTOFF);
 
 function formatCutoff(iso: string) {
   return new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
@@ -60,9 +61,9 @@ export function localDateISO(): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: PRICING_TIMEZONE });
 }
 
-/** Whether the shirt add-on can still be selected on the given date. */
-export function isShirtAvailable(dateISO: string): boolean {
-  return dateISO <= SHIRT_CUTOFF;
+/** Whether the shirt add-on can still be selected at the given moment. */
+export function isShirtAvailable(now: Date = new Date()): boolean {
+  return now.getTime() < new Date(SHIRT_CUTOFF_AT).getTime();
 }
 
 /** Whether Early Bird pricing is still in effect on the given date. */
@@ -97,7 +98,7 @@ export function getActiveShirtOptions(
       { choice: "with", label: "Early Bird — With Shirt", price: withShirt },
     ];
   }
-  if (isShirtAvailable(dateISO)) {
+  if (isShirtAvailable()) {
     return [
       { choice: "without", label: "Standard Rate — Without Shirt", price: base },
       { choice: "with", label: "Regular Rate — With Shirt", price: withShirt },
