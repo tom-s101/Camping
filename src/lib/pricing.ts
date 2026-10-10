@@ -12,7 +12,7 @@ export const PRICING_TIMEZONE = "Asia/Manila";
 export const EARLY_BIRD_CUTOFF = "2026-09-30";
 // Shirt add-on (at the Regular rate) is available through the end of this
 // date (inclusive). After this date, only the no-shirt Standard rate applies.
-export const SHIRT_CUTOFF = "2026-10-08";
+export const SHIRT_CUTOFF = "2026-10-10";
 
 export const SHIRT_SIZES = ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL"] as const;
 export type ShirtSize = (typeof SHIRT_SIZES)[number];
