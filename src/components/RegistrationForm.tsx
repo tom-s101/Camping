@@ -8,11 +8,13 @@ import { DISTRICTS, SINGLE_PASTORATES, SINGLE_PASTORATE_LABEL, districtLabel } f
 import {
   EARLY_BIRD_CUTOFF_LABEL,
   SHIRT_CUTOFF_LABEL,
+  SHIRT_OPEN_LABEL,
   SHIRT_SIZES,
   estimateFeePhp,
   getActiveShirtOptions,
   isEarlyBird,
   isShirtAvailable,
+  isShirtUpcoming,
   localDateISO,
   type ShirtChoice,
   type ShirtSize,
@@ -78,7 +80,7 @@ export default function RegistrationForm() {
   const today = useMemo(() => localDateISO(), []);
   // Full (age 10+) rates, used only for the general reference table --
   // per-attendee prices below are computed with that attendee's own age.
-  const baseShirtOptions = useMemo(() => getActiveShirtOptions(today), [today]);
+  const baseShirtOptions = getActiveShirtOptions(today);
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -132,6 +134,8 @@ export default function RegistrationForm() {
     ? `Early Bird pricing — through ${EARLY_BIRD_CUTOFF_LABEL} only.`
     : isShirtAvailable()
     ? `Through ${SHIRT_CUTOFF_LABEL} only.`
+    : isShirtUpcoming()
+    ? `Standard / walk-in rate. The camp shirt add-on opens ${SHIRT_OPEN_LABEL}, until ${SHIRT_CUTOFF_LABEL}.`
     : "Standard / walk-in rate.";
 
   const [openedGuidelines, setOpenedGuidelines] = useState(false);

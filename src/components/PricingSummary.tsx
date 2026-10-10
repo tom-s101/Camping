@@ -4,15 +4,17 @@ import { useMemo } from "react";
 import {
   EARLY_BIRD_CUTOFF_LABEL,
   SHIRT_CUTOFF_LABEL,
+  SHIRT_OPEN_LABEL,
   getActiveShirtOptions,
   isEarlyBird,
   isShirtAvailable,
+  isShirtUpcoming,
   localDateISO,
 } from "@/lib/pricing";
 
 export default function PricingSummary() {
   const today = useMemo(() => localDateISO(), []);
-  const options = useMemo(() => getActiveShirtOptions(today), [today]);
+  const options = getActiveShirtOptions(today);
 
   if (isEarlyBird(today)) {
     return (
@@ -39,7 +41,11 @@ export default function PricingSummary() {
     <>
       ₱{options[0].price} per person
       <br />
-      <span className="text-xs text-navy-900/50">Standard / walk-in rate</span>
+      <span className="text-xs text-navy-900/50">
+        {isShirtUpcoming()
+          ? `Shirt add-on opens ${SHIRT_OPEN_LABEL}, until ${SHIRT_CUTOFF_LABEL}`
+          : "Standard / walk-in rate"}
+      </span>
     </>
   );
 }
