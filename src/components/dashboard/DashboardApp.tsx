@@ -141,6 +141,35 @@ export default function DashboardApp() {
     if (tab === "stats") await fetchStats({ silent: true });
   }
 
+  async function handleShirtSizeChange(attendeeId: string, shirtSize: string) {
+    let savedSize: string;
+    try {
+      const res = await fetch(`/api/admin/attendees/${attendeeId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shirt_size: shirtSize }),
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(body?.error ? `${body.error} (HTTP ${res.status})` : `Request failed (HTTP ${res.status}).`);
+      }
+      savedSize = body.shirt_size;
+    } catch (err) {
+      setLoadError(
+        `Could not change that shirt size: ${err instanceof Error ? err.message : "Unknown error. Please try again."}`
+      );
+      return;
+    }
+    setRegistrations((prev) =>
+      prev.map((r) => ({
+        ...r,
+        attendees: r.attendees.map((a) => (a.id === attendeeId ? { ...a, shirt_size: savedSize } : a)),
+      }))
+    );
+    // Also supersedes any poll issued before the save, so it can't flash the old size back.
+    await fetchRegistrations(query, { silent: true });
+  }
+
   const rejected = useMemo(() => registrations.filter((r) => r.payment_status === "rejected"), [registrations]);
 
   async function handleLogout() {
@@ -211,6 +240,7 @@ export default function DashboardApp() {
                       registration={r}
                       onReview={handleReview}
                       onDelete={handleDelete}
+                      onShirtSizeChange={handleShirtSizeChange}
                       onPreviewImage={setPreviewImage}
                     />
                   ))}
@@ -230,6 +260,7 @@ export default function DashboardApp() {
                     registration={r}
                     onReview={handleReview}
                     onDelete={handleDelete}
+                    onShirtSizeChange={handleShirtSizeChange}
                     onPreviewImage={setPreviewImage}
                   />
                 ))
