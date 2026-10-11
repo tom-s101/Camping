@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { formatCampId } from "@/lib/campId";
-import type { Registration } from "@/lib/types";
+import { SHIRT_SIZES } from "@/lib/pricing";
+import type { Attendee, Registration } from "@/lib/types";
 import Modal from "@/components/Modal";
 
 const STATUS_STYLES: Record<Registration["payment_status"], string> = {
@@ -13,15 +14,56 @@ const STATUS_STYLES: Record<Registration["payment_status"], string> = {
 
 type DeleteStage = "closed" | "confirm1" | "confirm2";
 
+function ShirtSizeSelect({
+  attendee,
+  onChange,
+}: {
+  attendee: Attendee;
+  onChange: (attendeeId: string, shirtSize: string) => Promise<void>;
+}) {
+  // Holds the picked size while saving so the select doesn't snap back to
+  // the old value before the server confirms.
+  const [pending, setPending] = useState<string | null>(null);
+
+  async function handleChange(size: string) {
+    setPending(size);
+    await onChange(attendee.id, size);
+    setPending(null);
+  }
+
+  return (
+    <select
+      aria-label={`Shirt size for ${attendee.first_name} ${attendee.last_name}`}
+      value={pending ?? attendee.shirt_size ?? ""}
+      disabled={pending !== null}
+      onChange={(e) => handleChange(e.target.value)}
+      className="rounded border border-navy-900/20 bg-white px-1.5 py-0.5 text-sm font-semibold text-navy-900 focus:border-gold-600 focus:outline-none disabled:opacity-50"
+    >
+      {!attendee.shirt_size && (
+        <option value="" disabled>
+          —
+        </option>
+      )}
+      {SHIRT_SIZES.map((size) => (
+        <option key={size} value={size}>
+          {size}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 export default function RegistrationCard({
   registration,
   onReview,
   onDelete,
+  onShirtSizeChange,
   onPreviewImage,
 }: {
   registration: Registration;
   onReview: (id: string, action: "approve" | "reject") => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onShirtSizeChange: (attendeeId: string, shirtSize: string) => Promise<void>;
   onPreviewImage: (url: string) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -180,7 +222,12 @@ export default function RegistrationCard({
                 <li key={a.id} className="text-navy-900">
                   <span className="font-semibold text-gold-700">{formatCampId(a.camp_number)}</span> &middot;{" "}
                   {a.first_name} {a.last_name} &middot; {a.age_range} &middot; {a.gender}
-                  {a.wants_shirt && <> &middot; Shirt: {a.shirt_size ?? "—"}</>}
+                  {a.wants_shirt && (
+                    <>
+                      {" "}
+                      &middot; Shirt: <ShirtSizeSelect attendee={a} onChange={onShirtSizeChange} />
+                    </>
+                  )}
                   {a.fee_php !== null && <> &middot; ₱{Number(a.fee_php).toLocaleString()}</>}
                 </li>
               ))}
